@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ColoringPixelsTool
 {
     /// <summary>
-    /// 自动化调度器：按用户设定的总时长，自动一张张完成拟人涂色。
+    /// 自动化调度器：按用户设定的总时长，自动一张张完成拟人涂色（3D 体素版）。
     /// 与首页计时器联动，提供 elapsed / remaining / completed 状态。
     /// </summary>
     public class AutoScheduler : MonoBehaviour
@@ -26,8 +26,6 @@ namespace ColoringPixelsTool
         public Action OnTick;
 
         // ---- 本次会话的涂色速度（自动化页签的「预设 / 自定义」） ----
-        // 面板每帧都会把「拟人涂色」页签的参数同步给引擎，所以这里必须留一份会话级的
-        // 速度，让面板知道「现在该听谁的」——否则预设刚设好就被下一帧覆盖，等于没设。
         public bool SpeedOverrideActive { get; private set; }
         public float SpeedCellsPerSecond { get; private set; }
         public int SpeedStrokeLength { get; private set; }
@@ -68,6 +66,7 @@ namespace ColoringPixelsTool
             _paintedThisLevel = false;
             Running = true;
 
+            if (_painter != null) _painter.RestrictToColour = 0;
             ResolveSpeed(speedPreset);
 
             SetStatus("自动化已开始");
@@ -104,7 +103,7 @@ namespace ColoringPixelsTool
                     SpeedStrokeLength = 45;
                     SpeedPauseChance = 0.18f;
                     break;
-                default: // 0 = 自定义：用自动化页签里单独设定的三项，不再借「拟人涂色」页签的值
+                default: // 0 = 自定义：用自动化页签里单独设定的三项
                     SpeedCellsPerSecond = Plugin.AutoCustomSpeed.Value;
                     SpeedStrokeLength = Plugin.AutoCustomStroke.Value;
                     SpeedPauseChance = Plugin.AutoCustomPause.Value;
@@ -115,7 +114,6 @@ namespace ColoringPixelsTool
             ApplySpeed();
         }
 
-        /// <summary>把会话速度写进引擎（面板关闭时也能立即生效）。</summary>
         private void ApplySpeed()
         {
             if (_painter == null) return;
@@ -170,8 +168,8 @@ namespace ColoringPixelsTool
                     }
                 }
 
-                var ct = GameApi.Ct;
-                if (ct == null || !GameApi.InLevel(ct))
+                var b = GameApi.B;
+                if (b == null || !GameApi.InLevel(b))
                 {
                     SetStatus("等待进入关卡……");
                     yield return null;
@@ -200,21 +198,21 @@ namespace ColoringPixelsTool
 
                 if (!_painter.Running)
                 {
-                    int remaining = GameApi.RemainingPixels(ct);
+                    int remaining = GameApi.RemainingVoxels(b);
                     if (remaining <= 0)
                     {
                         // 本来就涂满的关卡（比如已完成过）不计入成绩，直接跳过。
                         if (_paintedThisLevel)
                         {
                             ImagesCompleted++;
-                            int pixels = GameApi.InLevel(ct) ? GameApi.TotalPixels(ct) : 0;
-                            UserProfile.RecordImageCompleted(pixels, XpTrack.Auto);
-                            GameApi.SaveNow();
+                            int voxels = GameApi.TotalVoxels(b);
+                            UserProfile.RecordImageCompleted(voxels, XpTrack.Auto);
+                            GameApi.SaveNow(b);
                             SetStatus(string.Format("已完成 {0} 张图", ImagesCompleted));
                         }
                         else
                         {
-                            GameApi.SaveNow();
+                            GameApi.SaveNow(b);
                         }
 
                         if (!Continuous)
@@ -237,7 +235,6 @@ namespace ColoringPixelsTool
                         {
                             ImagesFailed++;
                             SetStatus("无法自动切图：" + detail);
-                            // 停在原地等一会儿再试，避免死循环刷屏。
                             yield return new WaitForSeconds(2f);
                         }
                     }

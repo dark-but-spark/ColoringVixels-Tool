@@ -44,6 +44,15 @@ namespace ColoringPixelsTool
         internal static ConfigEntry<bool> AutoRestrict;
         internal static ConfigEntry<bool> AutoSaveAfterRun;
 
+        // ---- 自动化（定时 + 连图） ----
+        internal static ConfigEntry<float> AutoTotalMinutes;
+        internal static ConfigEntry<bool> AutoContinuous;
+        internal static ConfigEntry<float> AutoPauseBetweenImages;
+        internal static ConfigEntry<int> AutoDrawingSpeedPreset;
+        internal static ConfigEntry<int> AutoCustomSpeed;
+        internal static ConfigEntry<int> AutoCustomStroke;
+        internal static ConfigEntry<float> AutoCustomPause;
+
         // ---- 功能开关 ----
         internal static ConfigEntry<bool> AutoUnlocked;
         internal static ConfigEntry<bool> GuideShown;
@@ -79,6 +88,8 @@ namespace ColoringPixelsTool
             painter.PauseChance = AutoPause.Value;
             painter.LargestColourFirst = AutoLargestFirst.Value;
             painter.AutoSave = AutoSaveAfterRun.Value;
+
+            gameObject.AddComponent<AutoScheduler>();
 
             Log.Info(PluginName + " v" + Version + " 已加载 —— 按 " + KeyToggle.Value + " 打开面板");
         }
@@ -178,6 +189,26 @@ namespace ColoringPixelsTool
             AutoLargestFirst = Config.Bind(a, "先涂大面积颜色", false, "按剩余数量从多到少处理颜色");
             AutoRestrict = Config.Bind(a, "只涂当前颜色", false, "仅处理调色板中高亮的那一种颜色");
             AutoSaveAfterRun = Config.Bind(a, "自动保存", true, "涂完后写入存档");
+
+            var z = "5-自动化";
+            AutoTotalMinutes = Config.Bind(z, "总时长分钟", 30f,
+                new ConfigDescription("自动化任务的总运行时间", new AcceptableValueRange<float>(1f, 480f)));
+            AutoContinuous = Config.Bind(z, "连续涂图", false,
+                "当前图片涂完后尝试打开下一张图继续");
+            AutoPauseBetweenImages = Config.Bind(z, "换图间隔秒", 3f,
+                new ConfigDescription("完成一张图后到切换下一张图的等待时间", new AcceptableValueRange<float>(0.5f, 30f)));
+            AutoDrawingSpeedPreset = Config.Bind(z, "涂色速度预设", 1,
+                new ConfigDescription("0 = 自定义（用下面三项），1 = 慢，2 = 中，3 = 快",
+                    new AcceptableValueRange<int>(0, 3)));
+            AutoCustomSpeed = Config.Bind(z, "自定义手速", 60,
+                new ConfigDescription("速度预设选「自定义」时生效：每秒涂多少格",
+                    new AcceptableValueRange<int>(5, 400)));
+            AutoCustomStroke = Config.Bind(z, "自定义笔触长度", 40,
+                new ConfigDescription("速度预设选「自定义」时生效：一笔连续涂多少格后可能停笔",
+                    new AcceptableValueRange<int>(1, 200)));
+            AutoCustomPause = Config.Bind(z, "自定义停笔概率", 0.3f,
+                new ConfigDescription("速度预设选「自定义」时生效：每笔结束后随机停笔的概率",
+                    new AcceptableValueRange<float>(0f, 1f)));
 
             var f = "A-功能开关";
             AutoUnlocked = Config.Bind(f, "自动绘图已解锁", false,
