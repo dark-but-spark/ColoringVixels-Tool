@@ -90,6 +90,38 @@ namespace ColoringPixelsTool
             UserProfile.TickSave(dt);
             PaintTimer.Tick(dt);
             Stats.Tick(dt);
+
+            HandleHotkeys();
+        }
+
+        private void HandleHotkeys()
+        {
+            // 面板尚未迁移，F1 暂不处理。
+            if (Input.GetKeyDown(KeyFill.Value))
+            {
+                var b = GameApi.B;
+                if (GameApi.InLevel(b)) GameApi.FillLayer(b);
+            }
+
+            if (Input.GetKeyDown(KeyAuto.Value))
+            {
+                var painter = AutoPainter.Instance;
+                if (painter != null)
+                {
+                    if (!painter.Running && AutoRestrict.Value)
+                    {
+                        var b = GameApi.B;
+                        painter.RestrictToColour = GameApi.InLevel(b) ? b.selectedCol : 0;
+                    }
+                    painter.Toggle();
+                }
+            }
+
+            if (Input.GetKeyDown(KeySave.Value))
+            {
+                var b = GameApi.B;
+                if (GameApi.InLevel(b)) GameApi.SaveNow(b);
+            }
         }
 
         private void OnDestroy()
