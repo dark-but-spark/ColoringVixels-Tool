@@ -13,15 +13,15 @@ namespace ColoringPixelsTool
     /// 统计口径（和用户直觉一致）：
     ///   · 进入关卡后从「第一次落笔」开始计时，涂到 100% 立即停表；
     ///   · 中途发呆（超过 <see cref="IdleGrace"/> 秒没有任何新涂的格子）的时间不计入；
-    ///   · 每张图（书 : 关）单独记一份，切图后再回来会接着上一次的累计时间继续；
-    ///   · 数据落在 %APPDATA%\ColoringPixelsTool\ColoringPixelsTool.Times.txt（文本格式），
+    ///   · 每张图（世界 : 关）单独记一份，切图后再回来会接着上一次的累计时间继续；
+    ///   · 数据落在 %APPDATA%\ColoringVoxelsTool\ColoringVoxelsTool.Times.txt（文本格式），
     ///     不会随覆盖安装 / 验证游戏文件 / 卸载插件一起消失。
     ///
     /// 自动涂色与人工涂色都算「在画这张图」，因为两者都会让已涂格数变化。
     /// </summary>
     internal static class PaintTimer
     {
-        public const string FileName = "ColoringPixelsTool.Times.txt";
+        public const string FileName = "ColoringVoxelsTool.Times.txt";
 
         /// <summary>发呆超过这么久就暂停计时（秒）。</summary>
         private const float IdleGrace = 20f;
@@ -139,8 +139,8 @@ namespace ColoringPixelsTool
         {
             if (!_loaded) Load();
 
-            var ct = GameApi.Ct;
-            if (!GameApi.InLevel(ct))
+            var b = GameApi.B;
+            if (!GameApi.InLevel(b))
             {
                 // 离开关卡：保留累计值，下次回到同一张图继续。
                 _started = false;
@@ -165,8 +165,8 @@ namespace ColoringPixelsTool
             {
                 _sampleCooldown = SampleInterval;
 
-                int painted = GameApi.PaintedPixels(ct);
-                bool finished = GameApi.RemainingPixels(ct) <= 0;
+                int painted = GameApi.PaintedVoxels(b);
+                bool finished = GameApi.RemainingVoxels(b) <= 0;
 
                 if (painted != _lastPainted)
                 {
@@ -187,7 +187,7 @@ namespace ColoringPixelsTool
                     }
                     Save();
                 }
-                else if (!finished && _completed && painted < GameApi.TotalPixels(ct))
+                else if (!finished && _completed && painted < GameApi.TotalVoxels(b))
                 {
                     // 涂完之后又清空/重涂：重新开始本图计时。
                     _completed = false;
@@ -293,7 +293,7 @@ namespace ColoringPixelsTool
                 Trim();
 
                 var sb = new StringBuilder();
-                sb.AppendLine("# ColoringPixelsTool 单图绘画用时（key = 书:关）");
+                sb.AppendLine("# ColoringVoxelsTool 单图绘画用时（key = 世界:关）");
                 sb.AppendLine("# key\ttotal\tbest");
                 foreach (var kv in Times)
                 {

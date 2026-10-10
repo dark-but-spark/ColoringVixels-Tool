@@ -1,30 +1,35 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 
 namespace ColoringPixelsTool
 {
-    /// <summary>DLC / 书籍 / 成就 / 提示 的解锁逻辑。</summary>
+    /// <summary>
+    /// 《Coloring Voxels》：世界（书籍）/ 成就 / DLC 的解锁逻辑。
+    ///
+    /// 世界可见性 = WorldData.visibility；关卡完成 = mainMenuSaveData.worldDatas[world] 里的 HighLevelLevelData.completed；
+    /// DLC = SteamManager.CheckIfProductOwned（由 Harmony 前缀读 ForceDlcOwned 强行放行）。
+    /// </summary>
     internal static class Unlocker
     {
-        /// <summary>由 Harmony 前缀读取，为 true 时 CheckIfDLCOwned 恒返回 true。</summary>
+        /// <summary>由 Harmony 前缀读取，为 true 时 DLC 拥有判定恒为真。</summary>
         public static bool ForceDlcOwned;
 
-        // ------------------------------------------------------------- DLC / 书籍
+        // ------------------------------------------------------------- 世界
 
-        /// <summary>让所有书籍（含隐藏/奖励/DLC）在菜单中可见。</summary>
-        public static int RevealAllBooks()
+        /// <summary>让所有世界（含隐藏 / DLC）在菜单中可见。</summary>
+        public static int RevealAllWorlds()
         {
+            WorldData[] worlds = GameApi.St?.worldDatas;
+            if (worlds == null) return 0;
+
             int n = 0;
-            var all = SafeGetBooks();
-            if (all == null) return 0;
-            foreach (var bd in all)
+            foreach (WorldData wd in worlds)
             {
-                if (bd == null) continue;
-                if (!bd.visible)
+                if (wd == null) continue;
+                if (wd.visibility != WorldData.WorldVisibility.Always)
                 {
-                    bd.visible = true;
+                    wd.visibility = WorldData.WorldVisibility.Always;
                     n++;
                 }
             }
@@ -32,63 +37,65 @@ namespace ColoringPixelsTool
             return n;
         }
 
-        /// <summary>把所有书籍标记为「已完成」。</summary>
-        public static int CompleteAllBooks()
+        /// <summary>把所有世界里的所有关卡标记为「已完成」。</summary>
+        public static int CompleteAllWorlds()
         {
-            var st = GameApi.St;
-            var all = SafeGetBooks();
-            if (st == null || all == null) return 0;
-
-            if (st.complete == null || st.complete.Length < all.Length)
-                st.complete = new int[all.Length];
+            CrossLevelStorage st = GameApi.St;
+            MainMenuSaveData mm = st?.mainMenuSaveData;
+            WorldData[] worlds = st?.worldDatas;
+            if (st == null || mm == null || mm.worldDatas == null || worlds == null) return 0;
 
             int n = 0;
-            for (int i = 0; i < all.Length; i++)
+            int count = Math.Min(mm.worldDatas.Length, worlds.Length);
+            for (int i = 0; i < count; i++)
             {
-                if (all[i] != null && all[i].visible)
+                WorldData wd = worlds[i];
+                List<LevelData> levels = wd != null ? wd.levels : null;
+                if (levels == null) continue;
+
+                for (int j = 0; j < levels.Count; j++)
                 {
-                    if (st.complete[i] != 1) n++;
-                    st.complete[i] = 1;
+                    HighLevelLevelData hl = mm.worldDatas[i].GetHighLevelLevelData(levels[j]);
+                    if (hl.completed) continue;
+                    hl.completed = true;
+                    if (hl.personalBest <= 0f) hl.personalBest = 1f;
+                    hl.completionPercentage = 1f;
+                    mm.worldDatas[i].SetHighLevelLevelData(hl);
+                    n++;
                 }
             }
 
-            try { st.SaveMainMenuInfo(); } catch (Exception e) { Log.Warn("保存菜单失败: " + e.Message); }
-            try { st.RefreshLevelButtons(); } catch { }
+            try { SaveManager.SaveMainMenuData(); }
+            catch (Exception e) { Debug.LogWarning("[CGV] 保存菜单失败：" + e.Message); }
             RefreshMenus();
             return n;
         }
 
-        /// <summary>解锁全部 Steam 成就（书籍成就 + 每一关的成就）。</summary>
+        // ------------------------------------------------------------- 成就
+
+        /// <summary>解锁全部 Steam 成就（世界成就 + 每一关的成就）。</summary>
         public static int UnlockAllAchievements()
         {
-            var steam = GameApi.Steam;
-            if (steam == null) return 0;
+            CrossLevelStorage st = GameApi.St;
+            SteamManager steam = SafeSteam();
+            WorldData[] worlds = st?.worldDatas;
+            if (st == null || steam == null || worlds == null) return 0;
 
-            var ids = new HashSet<string>();
-            var all = SafeGetBooks();
-            if (all != null)
+            HashSet<string> ids = new HashSet<string>();
+            foreach (WorldData wd in worlds)
             {
-                foreach (var bd in all)
-                {
-                    if (bd == null) continue;
-                    if (!string.IsNullOrEmpty(bd.steamAchievement))
-                        ids.Add("ACHIEVEMENT_" + bd.steamAchievement);
+                if (wd == null) continue;
+                if (!string.IsNullOrEmpty(wd.achievementName)) ids.Add(wd.achievementName);
 
-                    if (bd.levels != null)
-                    {
-                        foreach (var lv in bd.levels)
-                        {
-                            if (lv != null && !string.IsNullOrEmpty(lv.steamAchievement))
-                                ids.Add("ACHIEVEMENT_" + lv.steamAchievement);
-                        }
-                    }
-                }
+                List<LevelData> levels = wd.levels;
+                if (levels == null) continue;
+                foreach (LevelData lv in levels)
+                    if (!string.IsNullOrEmpty(lv.achievementName)) ids.Add(lv.achievementName);
             }
 
             int n = 0;
-            foreach (var id in ids)
+            foreach (string id in ids)
             {
-                if (id == "ACHIEVEMENT_NONE") continue;
                 try
                 {
                     steam.UnlockSteamAchievement(id);
@@ -96,51 +103,24 @@ namespace ColoringPixelsTool
                 }
                 catch (Exception e)
                 {
-                    Log.Warn("成就解锁失败 " + id + ": " + e.Message);
+                    Debug.LogWarning("[CGV] 成就解锁失败 " + id + "：" + e.Message);
                 }
             }
-            Log.Info($"已尝试解锁 {n} 个成就");
             return n;
-        }
-
-        // ------------------------------------------------------------- 提示
-
-        /// <summary>强制开启游戏内提示（0=关 1=随机提示 2=重提示）。</summary>
-        public static void ApplyHintMode(bool enabled, int mode, ref int original)
-        {
-            var st = GameApi.St;
-            if (st == null) return;
-            if (enabled)
-            {
-                if (original < 0) original = st.hint;
-                st.hint = Mathf.Clamp(mode, 1, 2);
-            }
-            else if (original >= 0)
-            {
-                st.hint = original;
-                original = -1;
-            }
         }
 
         // ------------------------------------------------------------- 工具
 
-        private static BookDetails[] SafeGetBooks()
+        private static SteamManager SafeSteam()
         {
-            try { return AllBookDetails.GetAllBookDetails(); }
-            catch (Exception e) { Log.Warn("读取书籍列表失败: " + e.Message); return null; }
+            try { return SteamManager.Inst; }
+            catch (Exception) { return null; }
         }
 
         private static void RefreshMenus()
         {
-            try
-            {
-                var spawner = UnityEngine.Object.FindObjectOfType<MainMenuBookSpawner>();
-                if (spawner != null) spawner.RefreshMainMenuBooks();
-            }
-            catch (Exception e)
-            {
-                Log.Warn("刷新主菜单失败: " + e.Message);
-            }
+            try { WorldSelectPopulator.Inst?.InitialiseButtons(); }
+            catch (Exception e) { Debug.LogWarning("[CGV] 刷新主菜单失败：" + e.Message); }
         }
     }
 }

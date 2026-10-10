@@ -10,12 +10,12 @@ namespace ColoringPixelsTool
     /// <summary>
     /// 按天记录的使用统计：有效涂色时长 / 涂色格数 / 完成图数。
     ///
-    /// 只保留最近 90 天，文件很小。所有数据落在 %APPDATA%\ColoringPixelsTool 下，
+    /// 只保留最近 90 天，文件很小。所有数据落在 %APPDATA%\ColoringVoxelsTool 下，
     /// 更新 / 重装插件都不会丢。面板上的「今日 / 本周 / 累计」都从这里取。
     /// </summary>
     internal static class Stats
     {
-        public const string FileName = "ColoringPixelsTool.Stats.txt";
+        public const string FileName = "ColoringVoxelsTool.Stats.txt";
 
         private const int KeepDays = 90;
 
@@ -265,7 +265,7 @@ namespace ColoringPixelsTool
                 Prune();
 
                 var sb = new StringBuilder();
-                sb.AppendLine("# ColoringPixelsTool 使用统计（每日有效涂色时长 / 格数 / 完成图数）");
+                sb.AppendLine("# ColoringVoxelsTool 使用统计（每日有效涂色时长 / 格数 / 完成图数）");
                 sb.AppendLine("# date\tseconds\tpixels\timages");
                 foreach (var kv in Days)
                 {

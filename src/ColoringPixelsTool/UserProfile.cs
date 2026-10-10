@@ -48,10 +48,10 @@ namespace ColoringPixelsTool
     /// </summary>
     internal static class UserProfile
     {
-        public const string FileName = "ColoringPixelsTool.Profile.json";
+        public const string FileName = "ColoringVoxelsTool.Profile.json";
 
         /// <summary>用户数据目录名（放在 %APPDATA% 下，与游戏目录解耦）。</summary>
-        private const string UserDataFolderName = "ColoringPixelsTool";
+        private const string UserDataFolderName = "ColoringVoxelsTool";
 
         /// <summary>
         /// 「卸载后重装」标记文件名：安装器卸载时写进用户数据目录，插件启动时消费一次。
@@ -113,7 +113,7 @@ namespace ColoringPixelsTool
         private static long _assistPixelCarry;
 
         /// <summary>
-        /// 用户数据目录：%APPDATA%\ColoringPixelsTool。
+        /// 用户数据目录：%APPDATA%\ColoringVoxelsTool。
         ///
         /// 等级存档**刻意不放在游戏目录里**。BepInEx\config 会随「覆盖安装 / 卸载插件 /
         /// 验证游戏文件完整性 / 重装游戏」一起消失，放在那儿就会出现「更新一次版本，

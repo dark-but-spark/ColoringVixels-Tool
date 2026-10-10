@@ -10,7 +10,7 @@ namespace ColoringPixelsTool
     /// 为什么要有这一层：游戏目录（BepInEx\config）会随「覆盖安装 / 卸载插件 /
     /// 验证游戏文件完整性 / 重装游戏」一起消失，任何**属于用户**的数据都不该放那儿。
     /// 所有会持久化的东西（等级 / 单图计时 / 统计 / 提醒文案 / 备份）统一走
-    /// %APPDATA%\ColoringPixelsTool，写文件一律「先写 tmp 再替换」，
+    /// %APPDATA%\ColoringVoxelsTool，写文件一律「先写 tmp 再替换」，
     /// 避免半截文件把数据写坏。
     /// </summary>
     internal static class AppPaths
@@ -27,7 +27,7 @@ namespace ColoringPixelsTool
             return Path.Combine(UserDataDirectory(), fileName);
         }
 
-        /// <summary>备份目录：%APPDATA%\ColoringPixelsTool\backups。</summary>
+        /// <summary>备份目录：%APPDATA%\ColoringVoxelsTool\backups。</summary>
         public static string BackupDirectory()
         {
             return Path.Combine(UserDataDirectory(), "backups");

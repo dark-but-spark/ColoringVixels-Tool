@@ -1,427 +1,464 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using HarmonyLib;
 using UnityEngine;
 
 namespace ColoringPixelsTool
 {
     /// <summary>
-    /// 游戏内部数据的统一访问层。
+    /// 《Coloring Voxels》游戏内部数据的统一访问层（3D 体素版）。
     ///
     /// 关键机制（反编译自 Assembly-CSharp.dll）：
-    ///   ClickTest.mainGridValues[x,y]  —— 目标颜色编号（0 = 空白格，其余 = colours 列表下标 + 1）
-    ///   ClickTest.savedGridValues[x,y] —— 玩家已经涂上的颜色编号（-1 = 从未触碰）
-    ///   ClickTest.colourCounts[c-1]    —— 颜色 c 还剩多少个格子没涂对
-    ///   ClickTest.SetSingleCell(x,y)   —— 按当前状态刷新单格贴图
-    ///   ClickTest.CalculateProgress()  —— 重算 totalCount / totalCompleteCount（均为 private）
+    ///   Builder.voxelData[x,y,z].colourIndex —— 目标颜色编号（-1 = 该位置不是需要涂的体素）
+    ///   Builder.voxelProgress[x,y,z]         —— 玩家已涂颜色编号（short，-1 = 从未触碰，**public**）
+    ///   Builder.selectedCol / selectedLayer  —— 当前选中的颜色 / 层（**public**）
+    ///   Builder.GetColourCounts()            —— 当前层的每种颜色剩余数（**public**）
+    ///   Builder.SelectCube(x,y,z,clickable)  —— 涂一格的完整游戏逻辑（计数、存档、换色/换层）
+    ///   Builder.SetLayer / SetCol            —— 切换当前层 / 颜色
+    ///   SaveManager.SaveLevelData(name)       —— 写盘
+    ///
+    /// 一层是 y 轴：游戏一次只让涂 selectedLayer 那一层，涂满自动往上跳。
     /// </summary>
     internal static class GameApi
     {
-        private static readonly FieldInfo FTotalCount = AccessTools.Field(typeof(ClickTest), "totalCount");
-        private static readonly FieldInfo FTotalComplete = AccessTools.Field(typeof(ClickTest), "totalCompleteCount");
-        private static readonly FieldInfo FEditedTiles = AccessTools.Field(typeof(ClickTest), "editedTilesThisFrame");
-        private static readonly MethodInfo MCalculateProgress = AccessTools.Method(typeof(ClickTest), "CalculateProgress");
-        private static readonly MethodInfo MSetup = AccessTools.Method(typeof(ClickTest), "Setup");
+        private const BindingFlags Flags =
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-        public static ClickTest Ct => UnityEngine.Object.FindObjectOfType<ClickTest>();
-        public static CrossLevelStorage St => CrossLevelStorageHolder.inst;
-        public static GifTracker Gif => UnityEngine.Object.FindObjectOfType<GifTracker>();
-        public static SteamManager Steam => UnityEngine.Object.FindObjectOfType<SteamManager>();
+        // Builder 的私有字段（反射访问）
+        private static readonly FieldInfo FVoxelData = typeof(Builder).GetField("voxelData", Flags);
+        private static readonly FieldInfo FCubes = typeof(Builder).GetField("cubes", Flags);
 
-        public static bool InLevel(ClickTest ct)
+        // ---------------------------------------------------------------- 单例
+
+        public static Builder B => UnityEngine.Object.FindFirstObjectByType<Builder>();
+        public static CrossLevelStorage St => CrossLevelStorage.Inst;
+
+        // ---------------------------------------------------------------- 关卡状态
+
+        public static bool InLevel(Builder b)
         {
-            return ct != null && ct.mainGridValues != null && ct.savedGridValues != null
-                   && ct.xMax > 0 && ct.yMax > 0;
+            return b != null && b.voxelProgress != null && b.gameState != Builder.GameState.None;
         }
 
         public static bool InLevel()
         {
-            return InLevel(Ct);
+            return InLevel(B);
+        }
+
+        /// <summary>体素规模：x = 宽，y = 层数，z = 深。直接读公开的 voxelProgress 维度。</summary>
+        public static bool Size(Builder b, out int x, out int y, out int z)
+        {
+            x = y = z = 0;
+            short[,,] vp = b != null ? b.voxelProgress : null;
+            if (vp == null) return false;
+            x = vp.GetLength(0);
+            y = vp.GetLength(1);
+            z = vp.GetLength(2);
+            return x > 0 && y > 0 && z > 0;
+        }
+
+        public static int LayerCount(Builder b)
+        {
+            Size(b, out int _, out int y, out int _);
+            return y;
+        }
+
+        public static int CurrentLayer(Builder b) => b != null ? b.selectedLayer : -1;
+        public static int CurrentColour(Builder b) => b != null ? b.selectedCol : -1;
+
+        /// <summary>(x,y,z) 的目标颜色编号；-1 表示该位置不需要涂。</summary>
+        public static int TargetColour(Builder b, int x, int y, int z)
+        {
+            VoxelData[,,] data = FVoxelData?.GetValue(b) as VoxelData[,,];
+            if (data == null) return -1;
+            if (x < 0 || y < 0 || z < 0) return -1;
+            if (x >= data.GetLength(0) || y >= data.GetLength(1) || z >= data.GetLength(2)) return -1;
+            return data[x, y, z].colourIndex;
+        }
+
+        public static bool IsPainted(Builder b, int x, int y, int z)
+        {
+            short[,,] vp = b?.voxelProgress;
+            if (vp == null) return false;
+            int t = TargetColour(b, x, y, z);
+            return t >= 0 && vp[x, y, z] == t;
         }
 
         // ---------------------------------------------------------------- 统计
 
-        public static int TotalPixels(ClickTest ct)
+        public static int TotalVoxels(Builder b)
         {
+            if (!Size(b, out int xn, out int yn, out int zn)) return 0;
             int n = 0;
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
-                    if (ct.mainGridValues[x, y] != 0) n++;
+            for (int x = 0; x < xn; x++)
+                for (int y = 0; y < yn; y++)
+                    for (int z = 0; z < zn; z++)
+                        if (TargetColour(b, x, y, z) >= 0) n++;
             return n;
         }
 
-        public static int PaintedPixels(ClickTest ct)
+        public static int PaintedVoxels(Builder b)
         {
+            if (!Size(b, out int xn, out int yn, out int zn)) return 0;
+            short[,,] vp = b.voxelProgress;
             int n = 0;
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
+            for (int x = 0; x < xn; x++)
+                for (int y = 0; y < yn; y++)
+                    for (int z = 0; z < zn; z++)
+                    {
+                        int t = TargetColour(b, x, y, z);
+                        if (t >= 0 && vp[x, y, z] == t) n++;
+                    }
+            return n;
+        }
+
+        public static int RemainingVoxels(Builder b) => Mathf.Max(0, TotalVoxels(b) - PaintedVoxels(b));
+
+        public static float Progress(Builder b)
+        {
+            int total = TotalVoxels(b);
+            if (total <= 0) return 0f;
+            return Mathf.Clamp01(PaintedVoxels(b) / (float)total);
+        }
+
+        /// <summary>当前层还没涂的体素数。</summary>
+        public static int LayerRemaining(Builder b, int layer)
+        {
+            if (!Size(b, out int xn, out int _, out int zn)) return 0;
+            if (layer < 0 || layer >= b.voxelProgress.GetLength(1)) return 0;
+            short[,,] vp = b.voxelProgress;
+            int n = 0;
+            for (int x = 0; x < xn; x++)
+                for (int z = 0; z < zn; z++)
                 {
-                    int t = ct.mainGridValues[x, y];
-                    if (t != 0 && ct.savedGridValues[x, y] == t) n++;
+                    int t = TargetColour(b, x, layer, z);
+                    if (t >= 0 && vp[x, layer, z] != t) n++;
                 }
             return n;
         }
 
-        public static int RemainingPixels(ClickTest ct)
+        public static bool IsLayerComplete(Builder b, int layer)
         {
+            bool[] done = b?.layersComplete;
+            return done != null && layer >= 0 && layer < done.Length && done[layer];
+        }
+
+        /// <summary>当前层的每种颜色剩余数（直接返回游戏自己的数组）。</summary>
+        public static int[] ColourCounts(Builder b)
+        {
+            try { return b?.GetColourCounts(); } catch (Exception) { return null; }
+        }
+
+        // ---------------------------------------------------------------- 选择
+
+        public static void SelectColour(Builder b, int colourId)
+        {
+            if (b == null || colourId < 0) return;
+            try { b.SetCol(colourId); } catch (Exception) { }
+        }
+
+        public static void SelectLayer(Builder b, int layer)
+        {
+            if (b == null || layer < 0) return;
+            try { b.SetLayer(layer); } catch (Exception) { }
+        }
+
+        public static void NextLayer(Builder b, bool forward)
+        {
+            try { b?.SetNextLayer(forward); } catch (Exception) { }
+        }
+
+        public static void NextColour(Builder b, bool forward)
+        {
+            try { b?.SetNextCol(forward); } catch (Exception) { }
+        }
+
+        // ---------------------------------------------------------------- 涂色
+
+        /// <summary>涂满当前层里某一种颜色的所有待涂体素，返回涂了几格。</summary>
+        public static int FillLayerColour(Builder b, int colourId)
+        {
+            if (!InLevel(b) || colourId < 0) return 0;
+            if (!Size(b, out int xn, out int _, out int zn)) return 0;
+
+            int layer = b.selectedLayer;
+            if (layer < 0 || layer >= b.voxelProgress.GetLength(1)) return 0;
+
+            // 先快照待涂格：SelectCube 可能中途换色/换层，不能边遍历边依赖选中态。
+            List<Vector2Int> cells = CollectLayerPending(b, layer, colourId);
+            if (cells.Count == 0) return 0;
+
+            SelectColour(b, colourId);
+
             int n = 0;
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
-                {
-                    int t = ct.mainGridValues[x, y];
-                    if (t != 0 && ct.savedGridValues[x, y] != t) n++;
-                }
+            for (int i = 0; i < cells.Count; i++)
+            {
+                if (b.selectedLayer != layer) break; // 这一层已经涂满、游戏自动翻页了
+                if (PaintCell(b, cells[i].x, layer, cells[i].y)) n++;
+            }
             return n;
         }
 
-        public static float Progress(ClickTest ct)
+        /// <summary>涂满当前层所有颜色，返回涂了几格。</summary>
+        public static int FillLayer(Builder b)
         {
-            float total = FTotalCount != null ? (float)FTotalCount.GetValue(ct) : 0f;
-            float done = FTotalComplete != null ? (float)FTotalComplete.GetValue(ct) : 0f;
-            if (total <= 0f) return 0f;
-            return Mathf.Clamp01(done / total);
+            if (!InLevel(b)) return 0;
+            int layer = b.selectedLayer;
+            if (layer < 0) return 0;
+
+            int n = 0;
+            HashSet<int> colours = CollectLayerColours(b, layer);
+            foreach (int c in colours)
+            {
+                if (b.selectedLayer != layer) break;
+                n += FillLayerColour(b, c);
+            }
+            return n;
         }
 
-        /// <summary>收集所有还没涂对的格子。</summary>
-        public static List<Vector2Int> CollectPending(ClickTest ct, int onlyColour = 0)
+        /// <summary>逐层涂满整张图（依赖游戏自己的层动画，调用方需按帧调度）。</summary>
+        public static int FillAll(Builder b)
+        {
+            if (!InLevel(b)) return 0;
+            int n = 0;
+            int layers = LayerCount(b);
+            for (int layer = 0; layer < layers; layer++)
+            {
+                if (b.selectedLayer != layer) SelectLayer(b, layer);
+                if (b.selectedLayer != layer) continue;
+                n += FillLayer(b);
+            }
+            return n;
+        }
+
+        /// <summary>擦掉某一体素的已涂色。</summary>
+        public static bool EraseCell(Builder b, int x, int y, int z)
+        {
+            if (!InLevel(b)) return false;
+            try
+            {
+                b.EraseCube(x, y, z);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>用游戏自己的涂色逻辑涂一格（自动处理计数 / 存档 / 换色换层）。</summary>
+        private static bool PaintCell(Builder b, int x, int y, int z)
+        {
+            Cube[,,] cubes = FCubes?.GetValue(b) as Cube[,,];
+            if (cubes == null) return false;
+            if (x < 0 || y < 0 || z < 0) return false;
+            if (x >= cubes.GetLength(0) || y >= cubes.GetLength(1) || z >= cubes.GetLength(2)) return false;
+
+            CubeClickable clickable = cubes[x, y, z] as CubeClickable;
+            if (clickable == null || clickable.burnt) return false;
+
+            try
+            {
+                b.SelectCube(x, y, z, clickable);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static List<Vector2Int> CollectLayerPending(Builder b, int layer, int onlyColour)
         {
             var list = new List<Vector2Int>();
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
+            if (!Size(b, out int xn, out int _, out int zn)) return list;
+            short[,,] vp = b.voxelProgress;
+            for (int x = 0; x < xn; x++)
+                for (int z = 0; z < zn; z++)
                 {
-                    int t = ct.mainGridValues[x, y];
-                    if (t == 0) continue;
-                    if (onlyColour > 0 && t != onlyColour) continue;
-                    if (ct.savedGridValues[x, y] == t) continue;
-                    list.Add(new Vector2Int(x, y));
+                    int t = TargetColour(b, x, layer, z);
+                    if (t < 0) continue;
+                    if (onlyColour >= 0 && t != onlyColour) continue;
+                    if (vp[x, layer, z] == t) continue;
+                    list.Add(new Vector2Int(x, z));
                 }
             return list;
         }
 
-        // ---------------------------------------------------------------- 写格子
-
-        /// <summary>
-        /// 把 (x,y) 涂成指定颜色。
-        /// <paramref name="correct"/> 为 true 表示涂的是该格的目标色（会同步扣减颜色计数与完成数）。
-        /// </summary>
-        public static void ApplyCell(ClickTest ct, CrossLevelStorage st, int x, int y, int colour, bool correct)
+        private static HashSet<int> CollectLayerColours(Builder b, int layer)
         {
-            if (colour < 1) return;
-            if (ct.savedGridValues[x, y] == colour) return;
-
-            ct.savedGridValues[x, y] = colour;
-            if (correct)
-            {
-                if (ct.colourCounts != null && colour - 1 < ct.colourCounts.Length && ct.colourCounts[colour - 1] > 0)
-                    ct.colourCounts[colour - 1]--;
-                AddComplete(ct, 1f);
-                ct.pixelsColored++;
-                if (st != null) st.pixelCount++;
-            }
-
-            ct.SetSingleCell(x, y);
-
-            if (correct) UserProfile.RecordPixels(1);
-        }
-
-        public static void AddComplete(ClickTest ct, float delta)
-        {
-            if (FTotalComplete == null) return;
-            FTotalComplete.SetValue(ct, (float)FTotalComplete.GetValue(ct) + delta);
-        }
-
-        // ---------------------------------------------------------------- 批量操作
-
-        /// <summary>一键涂完当前关卡，返回本次填涂的格子数。</summary>
-        public static int InstantFill()
-        {
-            var ct = Ct;
-            if (!InLevel(ct)) return 0;
-
-            int n = 0;
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
+            var set = new HashSet<int>();
+            if (!Size(b, out int xn, out int _, out int zn)) return set;
+            short[,,] vp = b.voxelProgress;
+            for (int x = 0; x < xn; x++)
+                for (int z = 0; z < zn; z++)
                 {
-                    int t = ct.mainGridValues[x, y];
-                    if (t == 0) continue;
-                    if (ct.savedGridValues[x, y] == t) continue;
-                    ct.savedGridValues[x, y] = t;
-                    n++;
+                    int t = TargetColour(b, x, layer, z);
+                    if (t < 0) continue;
+                    if (vp[x, layer, z] == t) continue;
+                    set.Add(t);
                 }
-
-            if (n > 0) Rebuild(ct);
-            return n;
+            return set;
         }
 
-        /// <summary>把某一种颜色还没涂的格子全部涂完。</summary>
-        public static int FillColour(int colourId)
-        {
-            var ct = Ct;
-            if (!InLevel(ct) || colourId < 1) return 0;
+        // ---------------------------------------------------------------- 关卡 / 世界
 
-            int n = 0;
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
-                {
-                    if (ct.mainGridValues[x, y] != colourId) continue;
-                    if (ct.savedGridValues[x, y] == colourId) continue;
-                    ct.savedGridValues[x, y] = colourId;
-                    n++;
-                }
+        /// <summary>当前所在世界的索引（-1 表示读不到）。</summary>
+        public static int CurrentWorldIndex => St != null && St.mainMenuSaveData != null ? St.mainMenuSaveData.selectedWorld : -1;
 
-            if (n > 0) Rebuild(ct);
-            return n;
-        }
-
-        /// <summary>把当前选中的颜色涂完。</summary>
-        public static int FillSelectedColour()
-        {
-            var ct = Ct;
-            if (!InLevel(ct)) return 0;
-            return FillColour(ct.selectedColourID);
-        }
-
-        /// <summary>清空整张画布。</summary>
-        public static void EraseAll()
-        {
-            var ct = Ct;
-            if (!InLevel(ct)) return;
-
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
-                    ct.savedGridValues[x, y] = -1;
-
-            ct.gameOver = false;
-            Rebuild(ct);
-        }
-
-        /// <summary>依照当前网格数据重建贴图、颜色计数与进度。</summary>
-        public static void Rebuild(ClickTest ct)
-        {
-            if (!InLevel(ct)) return;
-            var st = St;
-
-            ct.tilemap.ClearAllTiles();
-            for (int x = 0; x < ct.xMax; x++)
-                for (int y = 0; y < ct.yMax; y++)
-                    ct.SetSingleCell(x, y);
-
-            if (st != null && st.colours != null)
-            {
-                ct.colourCounts = new int[st.colours.Count];
-                for (int x = 0; x < ct.xMax; x++)
-                    for (int y = 0; y < ct.yMax; y++)
-                    {
-                        int t = ct.mainGridValues[x, y];
-                        if (t != 0 && ct.savedGridValues[x, y] != t && t - 1 < ct.colourCounts.Length)
-                            ct.colourCounts[t - 1]++;
-                    }
-            }
-
-            try { MCalculateProgress?.Invoke(ct, null); } catch { }
-            if (FEditedTiles != null) FEditedTiles.SetValue(ct, true);
-            ct.pixelsColored = PaintedPixels(ct);
-        }
-
-        /// <summary>彻底重置当前关卡（等价于游戏自身的 Setup 流程）。</summary>
-        public static void SoftReset(ClickTest ct)
-        {
-            if (!InLevel(ct)) return;
-            try { MSetup?.Invoke(ct, null); } catch { }
-        }
-
-        // ---------------------------------------------------------------- 选中颜色
-
-        /// <summary>同步调色板与游戏高亮到指定颜色。</summary>
-        public static void HighlightColour(int id)
-        {
-            var ct = Ct;
-            var st = St;
-            if (!InLevel(ct) || st == null || st.colours == null) return;
-            if (id < 1 || id > st.colours.Count) return;
-
-            ct.selectedColourID = id;
-            ct.selectedColour = st.colours[id - 1];
-
-            if (ct.colourPalette != null)
-            {
-                foreach (var b in ct.colourPalette)
-                {
-                    if (b == null) continue;
-                    b.selectedState = b.colourID == id;
-                    try { b.ResetButton(); } catch { }
-                }
-            }
-            try { ct.UpdateGrayscale(); } catch { }
-        }
-
-        // ---------------------------------------------------------------- 存档
-
-        public static void SaveNow()
-        {
-            var ct = Ct;
-            var st = St;
-            if (!InLevel(ct) || st == null) return;
-            try { st.SaveGame(ct.savedGridValues, ct.xMax, ct.yMax, false, false); } catch (Exception e) { Log.Warn("保存失败: " + e.Message); }
-        }
-
-        // ---------------------------------------------------------------- 切图
-
-        private static readonly FieldInfo FBookIndex = AccessTools.Field(typeof(CrossLevelStorage), "bookIndex");
-        private static readonly FieldInfo FLevelIndex = AccessTools.Field(typeof(CrossLevelStorage), "levelIndex");
-        private static readonly FieldInfo FComplete = AccessTools.Field(typeof(CrossLevelStorage), "complete");
-        private static readonly MethodInfo MLoadNewLevel = AccessTools.Method(typeof(CrossLevelStorage), "LoadNewLevel");
-
-        private static PropertyInfo _booksProp;
-        private static Array _booksCache;
-        private static FieldInfo _levelsField;
-        private static FieldInfo _visibleField;
-
-        /// <summary>当前所在书的索引（-1 表示读不到）。</summary>
-        public static int CurrentBookIndex
-        {
-            get
-            {
-                var st = St;
-                if (st == null || FBookIndex == null) return -1;
-                try { return (int)FBookIndex.GetValue(st); } catch (Exception) { return -1; }
-            }
-        }
-
-        /// <summary>当前所在关卡的索引（-1 表示读不到）。</summary>
+        /// <summary>当前关卡在所属世界中的索引（-1 表示读不到）。</summary>
         public static int CurrentLevelIndex
         {
             get
             {
-                var st = St;
-                if (st == null || FLevelIndex == null) return -1;
-                try { return (int)FLevelIndex.GetValue(st); } catch (Exception) { return -1; }
+                CrossLevelStorage st = St;
+                if (st == null || st.levelData.saveFileName == null) return -1;
+                WorldData[] worlds = st.worldDatas;
+                int w = CurrentWorldIndex;
+                if (worlds == null || w < 0 || w >= worlds.Length) return -1;
+                List<LevelData> levels = worlds[w].levels;
+                if (levels == null) return -1;
+                string cur = st.levelData.saveFileName;
+                for (int i = 0; i < levels.Count; i++)
+                    if (levels[i].saveFileName == cur) return i;
+                return -1;
             }
         }
 
         /// <summary>用于判断「是否换了一张图」的稳定标识。</summary>
-        public static string LevelKey
+        public static string LevelKey => CurrentWorldIndex + ":" + CurrentLevelIndex;
+
+        public static int WorldCount
         {
-            get { return CurrentBookIndex + ":" + CurrentLevelIndex; }
+            get { WorldData[] w = St?.worldDatas; return w == null ? 0 : w.Length; }
         }
 
-        private static Array GetBooks()
+        /// <summary>某个世界的关卡数（读不到返回 0）。</summary>
+        public static int LevelCount(int worldIndex)
         {
-            if (_booksCache != null && _booksCache.Length > 0) return _booksCache;
-            try
-            {
-                if (_booksProp == null)
-                {
-                    Type t = AccessTools.TypeByName("AllBookDetails");
-                    if (t != null)
-                        _booksProp = t.GetProperty("inst",
-                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-                }
-                if (_booksProp != null) _booksCache = _booksProp.GetValue(null, null) as Array;
-            }
-            catch (Exception)
-            {
-            }
-            return _booksCache;
+            WorldData[] worlds = St?.worldDatas;
+            if (worlds == null || worldIndex < 0 || worldIndex >= worlds.Length) return 0;
+            List<LevelData> levels = worlds[worldIndex].levels;
+            return levels == null ? 0 : levels.Count;
         }
 
-        private static int LevelCount(object bookDetails)
-        {
-            if (bookDetails == null) return 0;
-            try
-            {
-                if (_levelsField == null) _levelsField = AccessTools.Field(bookDetails.GetType(), "levels");
-                Array arr = _levelsField == null ? null : _levelsField.GetValue(bookDetails) as Array;
-                return arr == null ? 0 : arr.Length;
-            }
-            catch (Exception)
-            {
-                return 0;
-            }
-        }
-
-        private static bool BookVisible(object bookDetails)
-        {
-            if (bookDetails == null) return false;
-            try
-            {
-                if (_visibleField == null) _visibleField = AccessTools.Field(bookDetails.GetType(), "visible");
-                if (_visibleField == null) return true;
-                object v = _visibleField.GetValue(bookDetails);
-                return !(v is bool) || (bool)v;
-            }
-            catch (Exception)
-            {
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// 切换到下一关，完全复刻游戏自己的 <c>LevelSelectItem.LoadLevel()</c>：
-        /// <c>CrossLevelStorage.LoadNewLevel(levelIndex, bookIndex, scroll)</c> + <c>SceneManager.LoadScene(1)</c>。
-        ///
-        /// 规则：同一本书里顺着往下走，遇到已完成的关卡直接跳过；
-        /// 一本涂完就进下一本（跳过没有关卡或不可见的书）。
-        /// </summary>
-        public static bool LoadNextLevel(out string message)
+        /// <summary>切换/重新加载指定世界与关卡（等价于游戏的关卡按钮 Action）。</summary>
+        public static bool LoadLevel(int worldIndex, int levelIndex, out string message)
         {
             message = null;
-            var st = St;
+            CrossLevelStorage st = St;
             if (st == null) { message = "存档尚未就绪"; return false; }
-            if (MLoadNewLevel == null) { message = "找不到 LoadNewLevel 方法"; return false; }
 
-            Array books = GetBooks();
-            if (books == null || books.Length == 0) { message = "读取不到书籍列表"; return false; }
-
-            int book = CurrentBookIndex;
-            if (book < 0 || book >= books.Length) { message = "当前书籍索引异常"; return false; }
-
-            int next = CurrentLevelIndex + 1;
-
-            // complete[book] 记录这本书已经完成的关卡数，直接跳到第一个还没完成的。
-            int done = 0;
-            if (FComplete != null)
-            {
-                int[] arr = FComplete.GetValue(st) as int[];
-                if (arr != null && book < arr.Length && arr[book] > 0) done = arr[book];
-            }
-            if (next < done) next = done;
-
-            int guard = 0;
-            while (true)
-            {
-                if (++guard > 4096) { message = "找不到合适的下一关"; return false; }
-                if (book >= books.Length) { message = "已经是最后一本书的最后一关"; return false; }
-
-                object bd = books.GetValue(book);
-                int count = LevelCount(bd);
-
-                if (count <= 0 || !BookVisible(bd))
-                {
-                    book++;
-                    next = 0;
-                    continue;
-                }
-                if (next < count) break;
-
-                book++;
-                next = 0;
-            }
+            WorldData[] worlds = st.worldDatas;
+            if (worlds == null || worldIndex < 0 || worldIndex >= worlds.Length) { message = "世界索引无效"; return false; }
+            List<LevelData> levels = worlds[worldIndex].levels;
+            if (levels == null || levelIndex < 0 || levelIndex >= levels.Count) { message = "关卡索引无效"; return false; }
 
             try
             {
-                MLoadNewLevel.Invoke(st, new object[] { next, book, 0f });
-                UnityEngine.SceneManagement.SceneManager.LoadScene(1);
-                message = string.Format("第 {0} 本书 · 第 {1} 关", book + 1, next + 1);
-                Log.Info("AutoScheduler 自动切图：" + message);
-                return true;
+                st.mainMenuSaveData.selectedWorld = worldIndex;
+                st.levelData = levels[levelIndex];
+                SaveManager.LoadAndSetLevelSaveFile(st.levelData.saveFileName);
+                if (ScreenFade.Inst != null) ScreenFade.Inst.TriggerLevelLoad(ScreenFade.MAIN_GAME);
             }
             catch (Exception e)
             {
                 message = "切换关卡失败：" + e.Message;
                 return false;
             }
+
+            message = (worldIndex + 1) + "-" + (levelIndex + 1) + " · " + st.levelData.saveFileName;
+            return true;
+        }
+
+        /// <summary>
+        /// 切到下一关：同一世界顺着往下走，跳过已完成 / 不可见 / 未拥有的关；
+        /// 一个世界走完就进下一个世界。
+        /// </summary>
+        public static bool LoadNextLevel(out string message, bool skipCompleted = true)
+        {
+            message = null;
+            CrossLevelStorage st = St;
+            if (st == null) { message = "存档尚未就绪"; return false; }
+
+            WorldData[] worlds = st.worldDatas;
+            if (worlds == null || worlds.Length == 0) { message = "读取不到世界列表"; return false; }
+
+            int w = CurrentWorldIndex;
+            if (w < 0 || w >= worlds.Length) { message = "当前世界索引异常"; return false; }
+
+            int l = CurrentLevelIndex + 1;
+            if (l < 0) l = 0;
+
+            int guard = 0;
+            while (true)
+            {
+                if (++guard > 8192) { message = "找不到合适的下一关"; return false; }
+                if (w >= worlds.Length) { message = "已经是最后一个世界"; return false; }
+
+                WorldData wd = worlds[w];
+                List<LevelData> levels = wd != null ? wd.levels : null;
+
+                if (wd == null || !wd.IsVisible() || IsWorldLocked(wd) || levels == null || levels.Count == 0)
+                {
+                    w++;
+                    l = 0;
+                    continue;
+                }
+                if (l >= levels.Count)
+                {
+                    w++;
+                    l = 0;
+                    continue;
+                }
+                if (skipCompleted && IsLevelCompleted(w, levels[l].saveFileName))
+                {
+                    l++;
+                    continue;
+                }
+                break;
+            }
+
+            return LoadLevel(w, l, out message);
+        }
+
+        /// <summary>某个世界的某关是否已经标记为完成（读存档摘要）。</summary>
+        public static bool IsLevelCompleted(int worldIndex, string saveFileName)
+        {
+            CrossLevelStorage st = St;
+            MainMenuSaveData mm = st?.mainMenuSaveData;
+            if (mm == null || mm.worldDatas == null || saveFileName == null) return false;
+            if (worldIndex < 0 || worldIndex >= mm.worldDatas.Length) return false;
+            List<HighLevelLevelData> list = mm.worldDatas[worldIndex].levelData;
+            if (list == null) return false;
+            for (int i = 0; i < list.Count; i++)
+                if (list[i].saveFileName == saveFileName && list[i].completed) return true;
+            return false;
+        }
+
+        /// <summary>DLC 世界未购买时视为上锁（配合解锁补丁使用）。</summary>
+        private static bool IsWorldLocked(WorldData wd)
+        {
+            if (wd == null || wd.worldType != WorldData.WorldType.DLC) return false;
+            try
+            {
+                SteamManager sm = SteamManager.Inst;
+                return sm != null && !sm.CheckIfProductOwned(wd.dlc);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        // ---------------------------------------------------------------- 存档
+
+        public static void SaveNow(Builder b)
+        {
+            CrossLevelStorage st = St;
+            if (st == null || st.levelData.saveFileName == null) return;
+            try { SaveManager.SaveLevelData(st.levelData.saveFileName); }
+            catch (Exception e) { Debug.LogWarning("[CGV] 保存失败：" + e.Message); }
         }
     }
 }

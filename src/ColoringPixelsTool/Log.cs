@@ -9,7 +9,7 @@ namespace ColoringPixelsTool
     /// <summary>
     /// 日志：一边进 BepInEx 的 LogOutput.log，一边写进插件自己的文件里。
     ///
-    /// 文件放在 <c>%APPDATA%\ColoringPixelsTool\logs\plugin-yyyyMMdd.log</c>（每天一个），
+    /// 文件放在 <c>%APPDATA%\ColoringVoxelsTool\logs\plugin-yyyyMMdd.log</c>（每天一个），
     /// 只保留最近 <see cref="KeepFiles"/> 个，避免越长越大。
     /// 排查问题时优先看这个文件：带时间戳、带级别、和用户数据放在一起不随游戏目录消失。
     /// </summary>
@@ -24,7 +24,7 @@ namespace ColoringPixelsTool
         private static string _file;
         private static DateTime _fileDay;
 
-        /// <summary>日志文件目录（%APPDATA%\ColoringPixelsTool\logs）；文件日志不可用时为 null。</summary>
+        /// <summary>日志文件目录（%APPDATA%\ColoringVoxelsTool\logs）；文件日志不可用时为 null。</summary>
         public static string LogDirectory
         {
             get { return _dir; }
@@ -113,7 +113,7 @@ namespace ColoringPixelsTool
             {
                 // 每个新文件开头写一条横幅，翻日志时好定位是哪一次启动
                 File.AppendAllText(_file,
-                    "==== Coloring Pixels Tool v" + Plugin.Version + "  " +
+                    "==== Coloring Voxels Tool v" + Plugin.Version + "  " +
                     day.ToString("yyyy-MM-dd") + " ====" + Environment.NewLine,
                     Encoding.UTF8);
             }
