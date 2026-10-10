@@ -11,6 +11,7 @@ namespace ColoringPixelsTool
     /// 关键机制（反编译自 Assembly-CSharp.dll）：
     ///   Builder.voxelData[x,y,z].colourIndex —— 目标颜色编号（-1 = 该位置不是需要涂的体素）
     ///   Builder.voxelProgress[x,y,z]         —— 玩家已涂颜色编号（short，-1 = 从未触碰，**public**）
+    ///   Builder.colourHidden[c]              —— 该颜色是否被「隐藏非必要体素」整体跳过
     ///   Builder.selectedCol / selectedLayer  —— 当前选中的颜色 / 层（**public**）
     ///   Builder.GetColourCounts()            —— 当前层的每种颜色剩余数（**public**）
     ///   Builder.SelectCube(x,y,z,clickable)  —— 涂一格的完整游戏逻辑（计数、存档、换色/换层）
@@ -27,6 +28,7 @@ namespace ColoringPixelsTool
         // Builder 的私有字段（反射访问）
         private static readonly FieldInfo FVoxelData = typeof(Builder).GetField("voxelData", Flags);
         private static readonly FieldInfo FCubes = typeof(Builder).GetField("cubes", Flags);
+        private static readonly FieldInfo FColourHidden = typeof(Builder).GetField("colourHidden", Flags);
 
         // ---------------------------------------------------------------- 单例
 
@@ -66,7 +68,7 @@ namespace ColoringPixelsTool
         public static int CurrentLayer(Builder b) => b != null ? b.selectedLayer : -1;
         public static int CurrentColour(Builder b) => b != null ? b.selectedCol : -1;
 
-        /// <summary>(x,y,z) 的目标颜色编号；-1 表示该位置不需要涂。</summary>
+        /// <summary>(x,y,z) 的目标颜色编号；-1 表示该位置不需要涂（原始值，含被隐藏的颜色）。</summary>
         public static int TargetColour(Builder b, int x, int y, int z)
         {
             VoxelData[,,] data = FVoxelData?.GetValue(b) as VoxelData[,,];
@@ -74,6 +76,21 @@ namespace ColoringPixelsTool
             if (x < 0 || y < 0 || z < 0) return -1;
             if (x >= data.GetLength(0) || y >= data.GetLength(1) || z >= data.GetLength(2)) return -1;
             return data[x, y, z].colourIndex;
+        }
+
+        /// <summary>该颜色是否被「隐藏非必要体素」整体跳过（游戏不计入进度、也不生成可点方块）。</summary>
+        public static bool Hidden(Builder b, int colour)
+        {
+            bool[] arr = FColourHidden?.GetValue(b) as bool[];
+            return arr != null && colour >= 0 && colour < arr.Length && arr[colour];
+        }
+
+        /// <summary>计入进度的目标色：目标色存在且未被隐藏，否则 -1。</summary>
+        private static int CountedColour(Builder b, int x, int y, int z)
+        {
+            int t = TargetColour(b, x, y, z);
+            if (t < 0 || Hidden(b, t)) return -1;
+            return t;
         }
 
         public static bool IsPainted(Builder b, int x, int y, int z)
@@ -93,7 +110,7 @@ namespace ColoringPixelsTool
             for (int x = 0; x < xn; x++)
                 for (int y = 0; y < yn; y++)
                     for (int z = 0; z < zn; z++)
-                        if (TargetColour(b, x, y, z) >= 0) n++;
+                        if (CountedColour(b, x, y, z) >= 0) n++;
             return n;
         }
 
@@ -106,7 +123,7 @@ namespace ColoringPixelsTool
                 for (int y = 0; y < yn; y++)
                     for (int z = 0; z < zn; z++)
                     {
-                        int t = TargetColour(b, x, y, z);
+                        int t = CountedColour(b, x, y, z);
                         if (t >= 0 && vp[x, y, z] == t) n++;
                     }
             return n;
@@ -121,7 +138,7 @@ namespace ColoringPixelsTool
             return Mathf.Clamp01(PaintedVoxels(b) / (float)total);
         }
 
-        /// <summary>当前层还没涂的体素数。</summary>
+        /// <summary>指定层还没涂的体素数。</summary>
         public static int LayerRemaining(Builder b, int layer)
         {
             if (!Size(b, out int xn, out int _, out int zn)) return 0;
@@ -131,7 +148,7 @@ namespace ColoringPixelsTool
             for (int x = 0; x < xn; x++)
                 for (int z = 0; z < zn; z++)
                 {
-                    int t = TargetColour(b, x, layer, z);
+                    int t = CountedColour(b, x, layer, z);
                     if (t >= 0 && vp[x, layer, z] != t) n++;
                 }
             return n;
@@ -178,14 +195,13 @@ namespace ColoringPixelsTool
         /// <summary>涂满当前层里某一种颜色的所有待涂体素，返回涂了几格。</summary>
         public static int FillLayerColour(Builder b, int colourId)
         {
-            if (!InLevel(b) || colourId < 0) return 0;
-            if (!Size(b, out int xn, out int _, out int zn)) return 0;
+            if (!InLevel(b) || colourId < 0 || Hidden(b, colourId)) return 0;
+            if (!Size(b, out int _, out int _, out int _)) return 0;
 
             int layer = b.selectedLayer;
             if (layer < 0 || layer >= b.voxelProgress.GetLength(1)) return 0;
 
-            // 先快照待涂格：SelectCube 可能中途换色/换层，不能边遍历边依赖选中态。
-            List<Vector2Int> cells = CollectLayerPending(b, layer, colourId);
+            List<Vector2Int> cells = PendingCells(b, layer, colourId);
             if (cells.Count == 0) return 0;
 
             SelectColour(b, colourId);
@@ -194,7 +210,7 @@ namespace ColoringPixelsTool
             for (int i = 0; i < cells.Count; i++)
             {
                 if (b.selectedLayer != layer) break; // 这一层已经涂满、游戏自动翻页了
-                if (PaintCell(b, cells[i].x, layer, cells[i].y)) n++;
+                if (PaintVoxel(b, cells[i].x, layer, cells[i].y)) n++;
             }
             return n;
         }
@@ -207,8 +223,7 @@ namespace ColoringPixelsTool
             if (layer < 0) return 0;
 
             int n = 0;
-            HashSet<int> colours = CollectLayerColours(b, layer);
-            foreach (int c in colours)
+            foreach (int c in PendingColours(b, layer))
             {
                 if (b.selectedLayer != layer) break;
                 n += FillLayerColour(b, c);
@@ -246,9 +261,10 @@ namespace ColoringPixelsTool
             }
         }
 
-        /// <summary>用游戏自己的涂色逻辑涂一格（自动处理计数 / 存档 / 换色换层）。</summary>
-        private static bool PaintCell(Builder b, int x, int y, int z)
+        /// <summary>用当前选中的颜色、借游戏自己的涂色逻辑涂一格（自动处理计数 / 存档 / 换色换层）。</summary>
+        public static bool PaintVoxel(Builder b, int x, int y, int z)
         {
+            if (!InLevel(b)) return false;
             Cube[,,] cubes = FCubes?.GetValue(b) as Cube[,,];
             if (cubes == null) return false;
             if (x < 0 || y < 0 || z < 0) return false;
@@ -268,15 +284,17 @@ namespace ColoringPixelsTool
             }
         }
 
-        private static List<Vector2Int> CollectLayerPending(Builder b, int layer, int onlyColour)
+        /// <summary>指定层里某种颜色还没涂的格子（返回 (x,z) 列表）。</summary>
+        public static List<Vector2Int> PendingCells(Builder b, int layer, int onlyColour)
         {
             var list = new List<Vector2Int>();
             if (!Size(b, out int xn, out int _, out int zn)) return list;
+            if (layer < 0 || layer >= b.voxelProgress.GetLength(1)) return list;
             short[,,] vp = b.voxelProgress;
             for (int x = 0; x < xn; x++)
                 for (int z = 0; z < zn; z++)
                 {
-                    int t = TargetColour(b, x, layer, z);
+                    int t = CountedColour(b, x, layer, z);
                     if (t < 0) continue;
                     if (onlyColour >= 0 && t != onlyColour) continue;
                     if (vp[x, layer, z] == t) continue;
@@ -285,20 +303,23 @@ namespace ColoringPixelsTool
             return list;
         }
 
-        private static HashSet<int> CollectLayerColours(Builder b, int layer)
+        /// <summary>指定层里还有待涂格子的颜色编号（按调色板顺序）。</summary>
+        public static List<int> PendingColours(Builder b, int layer)
         {
             var set = new HashSet<int>();
-            if (!Size(b, out int xn, out int _, out int zn)) return set;
+            if (!Size(b, out int xn, out int _, out int zn)) return new List<int>();
+            if (layer < 0 || layer >= b.voxelProgress.GetLength(1)) return new List<int>();
             short[,,] vp = b.voxelProgress;
             for (int x = 0; x < xn; x++)
                 for (int z = 0; z < zn; z++)
                 {
-                    int t = TargetColour(b, x, layer, z);
-                    if (t < 0) continue;
-                    if (vp[x, layer, z] == t) continue;
+                    int t = CountedColour(b, x, layer, z);
+                    if (t < 0 || vp[x, layer, z] == t) continue;
                     set.Add(t);
                 }
-            return set;
+            var list = new List<int>(set);
+            list.Sort();
+            return list;
         }
 
         // ---------------------------------------------------------------- 关卡 / 世界

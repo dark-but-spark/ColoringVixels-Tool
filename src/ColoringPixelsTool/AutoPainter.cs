@@ -5,13 +5,16 @@ using UnityEngine;
 namespace ColoringPixelsTool
 {
     /// <summary>
-    /// 拟人自动涂色引擎。
+    /// 拟人自动涂色引擎（3D 体素版）。
     ///
-    /// 拟人策略：
-    ///   1. 像真人一样「一种颜色一种颜色地涂」——先选定一个颜色，把它的格子全部处理掉，再换下一个。
-    ///   2. 同一种颜色内部按「画布分块 + 块间就近移动 + 块内蛇形扫行」生成笔顺，
-    ///      避免横跨整张画布乱跳，看起来就是人在一格一格推进。
-    ///   3. 每完成一笔会随机停顿；手速带抖动；可选「偶尔点错一格再回头补上」。
+    /// 拟人策略（贴合游戏「一次只涂一层」的规则）：
+    ///   1. 从当前层开始，一种颜色一种颜色地涂 —— 先选定一个颜色，把它的待涂体素处理掉，再换下一个；
+    ///   2. 同一种颜色内部按「平面分块 + 块间就近移动 + 块内蛇形扫行」生成笔顺，
+    ///      在 x-z 层内一格一格推进，像人拿着刷子扫；
+    ///   3. 每完成一笔随机停顿；手速带抖动；
+    ///   4. 当前层涂满后借游戏自己的「换层」逻辑升到下一层，直到整张图完成。
+    /// 落笔统一走 <see cref="GameApi.PaintVoxel"/>，即游戏自己的 SelectCube，所以计数、存档、
+    /// 进化到「换色 / 换层」都和手涂一模一样。
     /// </summary>
     internal class AutoPainter : MonoBehaviour
     {
@@ -21,7 +24,8 @@ namespace ColoringPixelsTool
         public bool Running { get; private set; }
         public string Status { get; private set; } = "待机";
         public int PaintedThisRun { get; private set; }
-        public int ColourId { get; private set; }
+        public int CurrentLayer { get; private set; } = -1;
+        public int CurrentColour { get; private set; } = -1;
         public float Elapsed => Running ? Time.unscaledTime - _startTime : _lastElapsed;
         public float CellsPerSecondNow => _actualCps;
 
@@ -30,30 +34,23 @@ namespace ColoringPixelsTool
         public int BlockSize = 8;
         public int StrokeLength = 30;
         public float PauseChance = 0.4f;
-        public float MistakeChance = 0f;
         public bool LargestColourFirst;
-        public bool HighlightColour = true;
         public bool AutoSave = true;
         public int RestrictToColour;
 
-        private ClickTest _ct;
-        private CrossLevelStorage _st;
-        private readonly Dictionary<int, List<Vector2Int>> _pending = new Dictionary<int, List<Vector2Int>>();
-        private readonly List<int> _order = new List<int>();
+        private Builder _b;
         private readonly System.Random _rng = new System.Random(Environment.TickCount);
-        private List<Vector2Int> _path;
+
+        private List<Vector2Int> _path;   // 当前颜色的笔顺（x,z）
         private int _pathIndex;
-        private int _orderIndex;
+        private List<int> _colours;       // 当前层的颜色顺序
+        private int _colourIndex;
+        private int _layer;
         private int _cursorX = -1, _cursorY = -1;
-        private float _timer;
-        private float _interval;
-        private float _pauseUntil;
-        private int _strokeLeft;
-        private float _startTime;
-        private float _lastElapsed;
-        private float _actualCps;
-        private float _cpsWindow;
-        private int _cpsCount;
+
+        private float _timer, _interval, _pauseUntil, _startTime, _lastElapsed;
+        private float _cpsWindow, _actualCps;
+        private int _cpsCount, _strokeLeft;
         private bool _finished;
 
         private void Awake()
@@ -65,73 +62,52 @@ namespace ColoringPixelsTool
 
         public void StartRun()
         {
-            var ct = GameApi.Ct;
-            var st = GameApi.St;
-            if (!GameApi.InLevel(ct) || st == null || st.colours == null)
+            var b = GameApi.B;
+            if (!GameApi.InLevel(b))
             {
                 Status = "不在关卡内";
                 return;
             }
 
-            _ct = ct;
-            _st = st;
-            _pending.Clear();
-            _order.Clear();
-            _path = null;
-            _pathIndex = 0;
-            _orderIndex = 0;
-            _cursorX = _cursorY = -1;
+            _b = b;
+            Running = true;
+            _finished = false;
+            PaintedThisRun = 0;
             _timer = 0f;
             _pauseUntil = 0f;
             _strokeLeft = Mathf.Max(1, StrokeLength);
-            _finished = false;
-            PaintedThisRun = 0;
+            _cursorX = _cursorY = -1;
+            _path = null;
+            _pathIndex = 0;
+            _colours = null;
+            _colourIndex = 0;
+            CurrentColour = -1;
             _cpsWindow = 0f;
             _cpsCount = 0;
             _actualCps = 0f;
             _startTime = Time.unscaledTime;
+            _lastElapsed = 0f;
 
-            // 按颜色归类
-            var all = GameApi.CollectPending(ct, RestrictToColour);
-            if (all.Count == 0)
-            {
-                Status = "已经没有需要涂的格子了";
-                Running = false;
-                return;
-            }
-
-            foreach (var p in all)
-            {
-                int c = ct.mainGridValues[p.x, p.y];
-                if (!_pending.TryGetValue(c, out var l))
-                {
-                    l = new List<Vector2Int>();
-                    _pending[c] = l;
-                }
-                l.Add(p);
-            }
-
-            foreach (var kv in _pending)
-                _order.Add(kv.Key);
-
-            // 排序：按调色板顺序，或按剩余数量从多到少
-            if (LargestColourFirst)
-                _order.Sort((a, b) => _pending[b].Count.CompareTo(_pending[a].Count));
-            else
-                _order.Sort();
+            _layer = b.selectedLayer >= 0 ? b.selectedLayer : 0;
+            if (b.selectedLayer != _layer) GameApi.SelectLayer(b, _layer);
+            CurrentLayer = _layer;
 
             Running = true;
-            _lastElapsed = 0f;
             Status = "开始涂色";
-            NextColour(true);
+            LoadNextColour();
         }
 
-        public void StopRun(bool rebuild = true)
+        public void StopRun()
         {
             if (!Running && !_finished) return;
             Running = false;
             Status = "已停止";
-            if (rebuild && GameApi.InLevel(_ct)) GameApi.Rebuild(_ct);
+        }
+
+        public void Toggle()
+        {
+            if (Running) StopRun();
+            else StartRun();
         }
 
         private void Finish()
@@ -139,20 +115,33 @@ namespace ColoringPixelsTool
             Running = false;
             _finished = true;
             _lastElapsed = Time.unscaledTime - _startTime;
-            if (AutoSave) GameApi.SaveNow();
-            if (GameApi.InLevel(_ct)) GameApi.Rebuild(_ct);
+            if (AutoSave) GameApi.SaveNow(_b);
             Status = $"完成！本次涂了 {PaintedThisRun} 格，用时 {_lastElapsed:0.0}s";
-            Log.Info(Status);
+            Debug.Log("[CGV] AutoPainter " + Status);
         }
 
         private void Update()
         {
             if (!Running) return;
-            if (_ct == null || !GameApi.InLevel(_ct))
+
+            var b = _b;
+            if (b == null || !GameApi.InLevel(b))
             {
-                StopRun(false);
+                Running = false;
                 Status = "关卡已关闭";
                 return;
+            }
+
+            // 游戏自己翻页了（涂满一层自动 SetNextLayer）：同步到新层
+            if (b.selectedLayer != _layer)
+            {
+                _layer = b.selectedLayer;
+                CurrentLayer = _layer;
+                _colours = null;
+                _colourIndex = 0;
+                _path = null;
+                _pathIndex = 0;
+                _cursorX = _cursorY = -1;
             }
 
             if (Time.unscaledTime < _pauseUntil) return;
@@ -181,29 +170,30 @@ namespace ColoringPixelsTool
 
         private void Step()
         {
+            var b = _b;
+
             if (_path == null || _pathIndex >= _path.Count)
             {
-                if (!NextColour(false))
+                if (!LoadNextColour())
                 {
                     Finish();
                     return;
                 }
+                // 换层 / 等待时本轮可能还没有可走的笔顺
+                if (_path == null || _pathIndex >= _path.Count) return;
             }
 
-            var cell = _path[_pathIndex];
-            _pathIndex++;
-
-            int target = _ct.mainGridValues[cell.x, cell.y];
-            if (target != 0 && _ct.savedGridValues[cell.x, cell.y] != target)
+            Vector2Int cell = _path[_pathIndex++];
+            int target = GameApi.TargetColour(b, cell.x, _layer, cell.y);
+            if (target >= 0 && b.voxelProgress[cell.x, _layer, cell.y] != target)
             {
-                GameApi.ApplyCell(_ct, _st, cell.x, cell.y, target, true);
-                PaintedThisRun++;
-                _cursorX = cell.x;
-                _cursorY = cell.y;
+                if (GameApi.PaintVoxel(b, cell.x, _layer, cell.y))
+                {
+                    PaintedThisRun++;
+                    _cursorX = cell.x;
+                    _cursorY = cell.y;
+                }
             }
-
-            if (MistakeChance > 0f && _rng.NextDouble() < MistakeChance)
-                DoMistake();
 
             _strokeLeft--;
             if (_strokeLeft <= 0)
@@ -218,70 +208,62 @@ namespace ColoringPixelsTool
             }
         }
 
-        /// <summary>偶尔手滑：把后面才该涂的格子涂成当前颜色，等轮到它时再补回正确颜色。</summary>
-        private void DoMistake()
+        // ------------------------------------------------------------ 换颜色 / 换层
+
+        /// <summary>为当前颜色规划笔顺；当前层涂完就换下一层；都涂完返回 false。</summary>
+        private bool LoadNextColour()
         {
-            for (int attempt = 0; attempt < 6; attempt++)
+            var b = _b;
+
+            while (true)
             {
-                int oi = _orderIndex + 1 + _rng.Next(Mathf.Max(1, _order.Count - _orderIndex - 1));
-                if (oi >= _order.Count) return;
-                int c = _order[oi];
-                if (!_pending.TryGetValue(c, out var cells) || cells.Count == 0) continue;
-
-                for (int t = 0; t < 5; t++)
+                if (_colours == null)
                 {
-                    var p = cells[_rng.Next(cells.Count)];
-                    if (_ct.mainGridValues[p.x, p.y] == ColourId) continue;
-                    if (_ct.savedGridValues[p.x, p.y] == ColourId) continue;
-                    GameApi.ApplyCell(_ct, _st, p.x, p.y, ColourId, false);
-                    return;
-                }
-            }
-        }
-
-        // ------------------------------------------------------------ 换颜色
-
-        private bool NextColour(bool first)
-        {
-            while (_orderIndex < _order.Count)
-            {
-                int colour = _order[_orderIndex];
-                if (!_pending.TryGetValue(colour, out var cells) || cells.Count == 0)
-                {
-                    _orderIndex++;
-                    continue;
+                    _colours = GameApi.PendingColours(b, _layer);
+                    if (LargestColourFirst)
+                        _colours.Sort((a, c) =>
+                            GameApi.PendingCells(b, _layer, c).Count.CompareTo(GameApi.PendingCells(b, _layer, a).Count));
+                    _colourIndex = 0;
                 }
 
-                // 该颜色是否还有没涂对的格子
-                var todo = new List<Vector2Int>(cells.Count);
-                foreach (var p in cells)
-                    if (_ct.mainGridValues[p.x, p.y] == colour && _ct.savedGridValues[p.x, p.y] != colour)
-                        todo.Add(p);
-
-                if (todo.Count == 0)
+                if (_colourIndex >= _colours.Count)
                 {
-                    _orderIndex++;
-                    continue;
+                    // 只涂当前颜色：涂完这种颜色就收工，不升层
+                    if (RestrictToColour > 0) return false;
+
+                    int before = b.selectedLayer;
+                    GameApi.NextLayer(b, true);
+                    if (b.selectedLayer == before) return false; // 没有下一层了 → 整图完成
+
+                    _layer = b.selectedLayer;
+                    CurrentLayer = _layer;
+                    _colours = null;
+                    _colourIndex = 0;
+                    _path = null;
+                    _pathIndex = 0;
+                    _cursorX = _cursorY = -1;
+                    return true;
                 }
 
-                ColourId = colour;
-                if (HighlightColour) GameApi.HighlightColour(colour);
+                int colour = _colours[_colourIndex++];
+                if (RestrictToColour > 0 && colour != RestrictToColour) continue;
 
-                _path = BuildPath(todo, _cursorX, _cursorY);
+                List<Vector2Int> cells = GameApi.PendingCells(b, _layer, colour);
+                if (cells.Count == 0) continue;
+
+                CurrentColour = colour;
+                GameApi.SelectColour(b, colour);
+
+                _path = BuildPath(cells, _cursorX, _cursorY);
                 _pathIndex = 0;
-                _orderIndex++;
                 _strokeLeft = Mathf.Max(1, StrokeLength + _rng.Next(-StrokeLength / 3, StrokeLength / 3 + 1));
-
-                if (!first)
-                    _pauseUntil = Time.unscaledTime + Mathf.Lerp(0.10f, 0.40f, (float)_rng.NextDouble());
                 return true;
             }
-            return false;
         }
 
         // ------------------------------------------------------------ 笔顺规划
 
-        /// <summary>分块 → 块间就近移动 → 块内蛇形扫行。</summary>
+        /// <summary>分块 → 块间就近移动 → 块内蛇形扫行（在 x-z 平面内）。</summary>
         private List<Vector2Int> BuildPath(List<Vector2Int> cells, int startX, int startY)
         {
             var path = new List<Vector2Int>(cells.Count);
@@ -348,15 +330,14 @@ namespace ColoringPixelsTool
 
                 foreach (var kv in rows)
                 {
-                    kv.Value.Sort((a, b) => a.x.CompareTo(b.x));
+                    kv.Value.Sort((a, c) => a.x.CompareTo(c.x));
                     if (flip) kv.Value.Reverse();
                     path.AddRange(kv.Value);
                     flip = !flip;
                 }
 
-                if (startX >= 0 && path.Count > 0)
+                if (path.Count > 0)
                 {
-                    // 下一次分块以本块最后一格为参考点
                     startX = path[path.Count - 1].x;
                     startY = path[path.Count - 1].y;
                 }

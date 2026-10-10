@@ -35,6 +35,15 @@ namespace ColoringPixelsTool
         // ---- 解锁 ----
         internal static ConfigEntry<bool> UnlockAllDlc;
 
+        // ---- 拟人涂色 ----
+        internal static ConfigEntry<int> AutoSpeed;
+        internal static ConfigEntry<int> AutoStroke;
+        internal static ConfigEntry<int> AutoBlock;
+        internal static ConfigEntry<float> AutoPause;
+        internal static ConfigEntry<bool> AutoLargestFirst;
+        internal static ConfigEntry<bool> AutoRestrict;
+        internal static ConfigEntry<bool> AutoSaveAfterRun;
+
         // ---- 功能开关 ----
         internal static ConfigEntry<bool> AutoUnlocked;
         internal static ConfigEntry<bool> GuideShown;
@@ -62,6 +71,14 @@ namespace ColoringPixelsTool
             {
                 Log.Error("Harmony 补丁失败: " + e);
             }
+
+            var painter = gameObject.AddComponent<AutoPainter>();
+            painter.CellsPerSecond = AutoSpeed.Value;
+            painter.StrokeLength = AutoStroke.Value;
+            painter.BlockSize = AutoBlock.Value;
+            painter.PauseChance = AutoPause.Value;
+            painter.LargestColourFirst = AutoLargestFirst.Value;
+            painter.AutoSave = AutoSaveAfterRun.Value;
 
             Log.Info(PluginName + " v" + Version + " 已加载 —— 按 " + KeyToggle.Value + " 打开面板");
         }
@@ -116,6 +133,19 @@ namespace ColoringPixelsTool
 
             var u = "1-解锁";
             UnlockAllDlc = Config.Bind(u, "解锁全部DLC", true, "让所有 DLC / 奖励世界可以直接进入");
+
+            var a = "3-拟人涂色";
+            AutoSpeed = Config.Bind(a, "手速", 45,
+                new ConfigDescription("每秒涂多少格", new AcceptableValueRange<int>(5, 220)));
+            AutoStroke = Config.Bind(a, "笔触长度", 30,
+                new ConfigDescription("一笔连续涂多少格后可能停笔", new AcceptableValueRange<int>(5, 150)));
+            AutoBlock = Config.Bind(a, "就近分块", 8,
+                new ConfigDescription("路径规划的分块边长，越小越局部", new AcceptableValueRange<int>(2, 32)));
+            AutoPause = Config.Bind(a, "停笔概率", 0.4f,
+                new ConfigDescription("每笔结束后随机停笔的概率", new AcceptableValueRange<float>(0f, 1f)));
+            AutoLargestFirst = Config.Bind(a, "先涂大面积颜色", false, "按剩余数量从多到少处理颜色");
+            AutoRestrict = Config.Bind(a, "只涂当前颜色", false, "仅处理调色板中高亮的那一种颜色");
+            AutoSaveAfterRun = Config.Bind(a, "自动保存", true, "涂完后写入存档");
 
             var f = "A-功能开关";
             AutoUnlocked = Config.Bind(f, "自动绘图已解锁", false,
