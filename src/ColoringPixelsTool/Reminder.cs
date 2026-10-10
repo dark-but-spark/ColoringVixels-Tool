@@ -213,7 +213,7 @@ namespace ColoringPixelsTool
             PopupBody = body ?? "";
             Popup = true;
             PopupAt = Time.unscaledTime;
-            CheatPanel.NudgeReveal("reminder-popup");
+            PanelHooks.NudgeReveal("reminder-popup");
         }
 
         public static void DismissPopup()

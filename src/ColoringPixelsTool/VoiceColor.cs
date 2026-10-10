@@ -225,8 +225,7 @@ namespace ColoringPixelsTool
                 return;
             }
 
-            var st = GameApi.St;
-            int total = st != null && st.colours != null ? st.colours.Count : 0;
+            int total = GameApi.ColourCount(GameApi.B);
             if (total <= 0)
             {
                 LastAction = "当前不在关卡里，读到的编号 " + number + " 没法切换";

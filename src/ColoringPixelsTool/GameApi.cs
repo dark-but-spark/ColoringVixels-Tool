@@ -174,6 +174,25 @@ namespace ColoringPixelsTool
             try { b.SetCol(colourId); } catch (Exception) { }
         }
 
+        /// <summary>切换当前选中颜色（以当前关卡为准）。</summary>
+        public static void HighlightColour(int colourId)
+        {
+            SelectColour(B, colourId);
+        }
+
+        /// <summary>当前关卡的颜色总数（调色板大小）。</summary>
+        public static int ColourCount(Builder b)
+        {
+            CrossLevelStorage st = St;
+            if (st == null) return 0;
+            List<LevelVersionData> versioned = st.levelData.versionedData;
+            if (versioned == null || versioned.Count == 0) return 0;
+            int v = st.levelSaveData != null ? st.levelSaveData.levelVersion : 0;
+            if (v < 0 || v >= versioned.Count) v = versioned.Count - 1;
+            List<ColourData> cols = versioned[v].colours;
+            return cols == null ? 0 : cols.Count;
+        }
+
         public static void SelectLayer(Builder b, int layer)
         {
             if (b == null || layer < 0) return;

@@ -68,7 +68,7 @@ namespace ColoringPixelsTool
 
             _pending = true;
             _pendingAt = Time.unscaledTime;
-            CheatPanel.NudgeReveal("quit-confirm");
+            PanelHooks.NudgeReveal("quit-confirm");
             return false;
         }
 
