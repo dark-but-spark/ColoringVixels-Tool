@@ -6,7 +6,7 @@ using System.Text;
 namespace ColoringPixelsTool.Installer
 {
     /// <summary>
-    /// 安装器自己的少量持久化状态，放在 %APPDATA%\ColoringPixelsTool\installer.settings。
+    /// 安装器自己的少量持久化状态，放在 %APPDATA%\ColoringVoxelsTool\installer.settings。
     ///
     /// 为什么不用别的地方存：
     ///   * 游戏目录 —— 会被 Steam「验证游戏文件完整性」清掉，也会随卸载一起消失；

@@ -58,7 +58,7 @@ namespace ColoringPixelsTool.Installer
 
         public static GameInfo Inspect(string dir)
         {
-            GameDescriptor game = AppInfo.ColoringPixels;
+            GameDescriptor game = AppInfo.ColoringVoxels;
 
             GameInfo info = new GameInfo();
             info.Game = game;
@@ -107,11 +107,11 @@ namespace ColoringPixelsTool.Installer
                 return info;
             }
 
-            // 注入包（winhttp.dll + BepInEx 运行时）是 32 位的：64 位主程序装上去不会生效，
-            // 与其让玩家装完发现没反应，不如直接判为不可用。
+            // 注入包（winhttp.dll + BepInEx 运行时）是 64 位的：《Coloring Voxels》是 x64 主程序，
+            // 32 位主程序装上去不会生效；与其让玩家装完发现没反应，不如直接判为不可用。
             info.Architecture = DetectArchitecture(exe);
-            if (info.Architecture == GameInfo.ArchX64)
-                info.Error = "检测到 64 位主程序，本注入包仅支持 32 位版本";
+            if (info.Architecture == GameInfo.ArchX86)
+                info.Error = "检测到 32 位主程序，本注入包仅支持 64 位版本";
             else if (info.Architecture == GameInfo.ArchUnknown)
                 info.Warning = "无法识别主程序位数，仍会尝试安装";
 
@@ -204,7 +204,7 @@ namespace ColoringPixelsTool.Installer
                 trail.Add("未发现正在运行的游戏进程");
             }
 
-            GameDescriptor game = AppInfo.ColoringPixels;
+            GameDescriptor game = AppInfo.ColoringVoxels;
             foreach (string lib in libraries)
             {
                 string common = Path.Combine(Path.Combine(lib, "steamapps"), "common");
@@ -256,7 +256,7 @@ namespace ColoringPixelsTool.Installer
             GameInfo info = Inspect(full);
             if (info.Usable)
             {
-                found.Add(new GameCandidate(full, source, AppInfo.ColoringPixels));
+                found.Add(new GameCandidate(full, source, AppInfo.ColoringVoxels));
                 trail.Add("√ " + full + "（" + source + "，" + info.ArchitectureText + "）");
             }
             else
@@ -267,7 +267,7 @@ namespace ColoringPixelsTool.Installer
 
         private static IEnumerable<string> CommonPaths()
         {
-            string name = AppInfo.ColoringPixels.SteamInstallDirName;
+            string name = AppInfo.ColoringVoxels.SteamInstallDirName;
             foreach (DriveInfo drive in SteamLocator.FixedDrives())
             {
                 string root = drive.RootDirectory.FullName;
@@ -287,7 +287,7 @@ namespace ColoringPixelsTool.Installer
         /// <summary>受限深度的磁盘扫描，跳过系统目录。</summary>
         private static IEnumerable<string> DeepScan()
         {
-            string name = AppInfo.ColoringPixels.SteamInstallDirName;
+            string name = AppInfo.ColoringVoxels.SteamInstallDirName;
             string lower = name.ToLowerInvariant();
 
             string[] skip = new string[]
@@ -370,7 +370,7 @@ namespace ColoringPixelsTool.Installer
         {
             try
             {
-                Process[] list = Process.GetProcessesByName(AppInfo.ColoringPixels.ProcessName);
+                Process[] list = Process.GetProcessesByName(AppInfo.ColoringVoxels.ProcessName);
                 if (list != null && list.Length > 0) return list[0];
             }
             catch (Exception)

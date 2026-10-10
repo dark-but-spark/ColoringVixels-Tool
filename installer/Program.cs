@@ -57,7 +57,7 @@ namespace ColoringPixelsTool.Installer
                     return 2;
                 }
 
-                GameDescriptor game = AppInfo.ColoringPixels;
+                GameDescriptor game = AppInfo.ColoringVoxels;
 
                 string dir = options.GameDir;
                 bool fromRemembered = false;
@@ -116,7 +116,7 @@ namespace ColoringPixelsTool.Installer
         /// <summary>执行一次 检测 / 安装 / 卸载。</summary>
         private static int RunOne(Options options, string dir)
         {
-            GameDescriptor game = AppInfo.ColoringPixels;
+            GameDescriptor game = AppInfo.ColoringVoxels;
             Log.Info("目标游戏：" + game.DisplayName + "（" + game.Key + "）");
 
             GameInfo info = GameLocator.Inspect(dir);

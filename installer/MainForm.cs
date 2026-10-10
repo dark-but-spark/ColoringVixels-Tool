@@ -24,7 +24,7 @@ namespace ColoringPixelsTool.Installer
         private readonly List<GameCandidate> _candidates = new List<GameCandidate>();
 
         // 只支持一款游戏（《Coloring Pixels》）：界面上的提示文案都从这张表取。
-        private static readonly GameDescriptor _game = AppInfo.ColoringPixels;
+        private static readonly GameDescriptor _game = AppInfo.ColoringVoxels;
 
         private TextBox _txtDir;
         private Label _lblStatus;
@@ -202,7 +202,7 @@ namespace ColoringPixelsTool.Installer
             // 出于隐私考虑界面只显示占位符（不暴露 Windows 用户名），打开时才解析真实路径。
             int saveW = Theme.S(64);
             _lblSave = Theme.MakeLabel(
-                "本地存档（等级 / 统计 / 备份 / 日志）：%APPDATA%\\ColoringPixelsTool",
+                "本地存档（等级 / 统计 / 备份 / 日志）：%APPDATA%\\ColoringVoxelsTool",
                 Theme.Muted, Theme.FontSmall,
                 Theme.S(Side), Theme.S(122), inner - saveW - Theme.S(8), Theme.S(16));
             cardOpt.Controls.Add(_lblSave);
@@ -718,7 +718,7 @@ namespace ColoringPixelsTool.Installer
             }
 
             string dir = info.Directory;
-            GameDescriptor game = AppInfo.ColoringPixels;
+            GameDescriptor game = AppInfo.ColoringVoxels;
             bool overwrite = _chkOverwrite.Checked;
             bool backup = _chkBackup.Checked;
             bool launch = _chkLaunch.Checked;
@@ -1040,7 +1040,7 @@ namespace ColoringPixelsTool.Installer
             Launch(info.Directory);
         }
 
-        /// <summary>打开软件本地存档目录（%APPDATA%\ColoringPixelsTool）。</summary>
+        /// <summary>打开软件本地存档目录（%APPDATA%\ColoringVoxelsTool）。</summary>
         private void OnOpenSaveClick(object sender, EventArgs e)
         {
             try

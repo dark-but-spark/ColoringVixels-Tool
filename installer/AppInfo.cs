@@ -6,7 +6,7 @@ using System.Reflection;
 namespace ColoringPixelsTool.Installer
 {
     /// <summary>
-    /// 游戏《Coloring Pixels》的描述信息。安装器完全按这张表工作：
+    /// 游戏《Coloring Voxels》的描述信息。安装器完全按这张表工作：
     /// 识别目录、挑选内嵌负载、校验、写安装记录、卸载、启动。
     ///
     /// 游戏是 Mono 构建，注入 BepInEx 5 插件（面板在游戏内，F1 打开）。
@@ -33,33 +33,33 @@ namespace ColoringPixelsTool.Installer
     /// <summary>安装器使用的常量与版本信息。</summary>
     internal static class AppInfo
     {
-        public const string ProductName = "Coloring Pixels Tool";
-        public const string DisplayName = "Coloring Pixels Tool";
-        public const string PluginGuid = "coloringpixels.cheatsuite";
+        public const string ProductName = "Coloring Voxels Tool";
+        public const string DisplayName = "Coloring Voxels Tool";
+        public const string PluginGuid = "coloringvoxels.cheatsuite";
         public const string PluginDllName = "ColoringPixelsTool.dll";
-        public const string PluginConfigName = "coloringpixels.cheatsuite.cfg";
+        public const string PluginConfigName = "coloringvoxels.cheatsuite.cfg";
 
         /// <summary>旧版本（ColoringPixelsCheat 时期）的插件文件名。安装 / 卸载时会一并清理，
         /// 否则同一 GUID 的旧插件会与新插件被 BepInEx 同时加载。</summary>
-        public static readonly string[] LegacyPluginDllNames = new string[] { "ColoringPixelsCheat.dll" };
+        public static readonly string[] LegacyPluginDllNames = new string[0];
 
         /// <summary>内嵌资源名（由构建脚本以 /resource:...,payload.zip 写入）。</summary>
         public const string PayloadResourceName = "payload.zip";
 
         public const string BepInExFolderName = "BepInEx";
         public const string BackupFolderName = "_cpc_backup";
-        public const string MarkerFileName = "coloringpixels.cheatsuite.installed.txt";
+        public const string MarkerFileName = "coloringvoxels.cheatsuite.installed.txt";
         public const string DoorstopMarkerFile = ".doorstop_version";
 
-        public const string GameExeName = "ColoringPixels.exe";
-        public const string GameDataFolderName = "ColoringPixels_Data";
+        public const string GameExeName = "ColoringVoxels.exe";
+        public const string GameDataFolderName = "ColoringVoxels_Data";
         public const string GameAssemblyName = "Assembly-CSharp.dll";
 
-        public const string SteamAppId = "897330";
-        public const string SteamInstallDirName = "Coloring Pixels";
+        public const string SteamAppId = "3634590";
+        public const string SteamInstallDirName = "Coloring Voxels";
 
         /// <summary>用户数据目录名（放在 %APPDATA% 下，与游戏目录解耦）。</summary>
-        public const string UserDataDirectoryName = "ColoringPixelsTool";
+        public const string UserDataDirectoryName = "ColoringVoxelsTool";
 
         /// <summary>
         /// 「卸载后重装」标记文件名（卸载时写入用户数据目录，插件启动时消费一次）。
@@ -67,20 +67,20 @@ namespace ColoringPixelsTool.Installer
         /// </summary>
         public const string FreshInstallFlagName = "fresh-install.flag";
 
-        public const string DefaultRepositoryUrl = "https://github.com/zlwzk/ColoringPixels-Tool";
+        public const string DefaultRepositoryUrl = "https://github.com/dark-but-spark/ColoringVixels-Tool";
 
         // ============================================================ 游戏表
 
-        /// <summary>《Coloring Pixels》：Mono + BepInEx 注入插件。本工具只支持这一款。</summary>
-        public static readonly GameDescriptor ColoringPixels = new GameDescriptor
+        /// <summary>《Coloring Voxels》：Mono + BepInEx 注入插件。本工具只支持这一款。</summary>
+        public static readonly GameDescriptor ColoringVoxels = new GameDescriptor
         {
-            Key = "cp",
-            DisplayName = "Coloring Pixels",
-            TipText = "进入任意关卡后按 F1 打开作弊面板。",
+            Key = "cv",
+            DisplayName = "Coloring Voxels",
+            TipText = "进入任意关卡后按 F1 打开面板。",
             ExeName = GameExeName,
             DataFolderName = GameDataFolderName,
             ManagedAssembly = GameAssemblyName,
-            ProcessName = "ColoringPixels",
+            ProcessName = "ColoringVoxels",
             SteamAppId = SteamAppId,
             SteamInstallDirName = SteamInstallDirName,
             PluginRelativePath = BepInExFolderName + "\\plugins\\" + PluginDllName,
@@ -97,7 +97,7 @@ namespace ColoringPixelsTool.Installer
             if (string.IsNullOrEmpty(key)) return null;
             string k = key.Trim().ToLowerInvariant();
 
-            GameDescriptor g = ColoringPixels;
+            GameDescriptor g = ColoringVoxels;
             if (string.Equals(g.Key, k, StringComparison.OrdinalIgnoreCase)) return g;
             if (string.Equals(g.ProcessName, k, StringComparison.OrdinalIgnoreCase)) return g;
             if (string.Equals(g.SteamInstallDirName, k, StringComparison.OrdinalIgnoreCase)) return g;
@@ -106,7 +106,7 @@ namespace ColoringPixelsTool.Installer
 
         // ============================================================ 用户数据目录
 
-        /// <summary>%APPDATA%\ColoringPixelsTool（不存在时返回路径本身，由调用方决定是否创建）。</summary>
+        /// <summary>%APPDATA%\ColoringVoxelsTool（不存在时返回路径本身，由调用方决定是否创建）。</summary>
         public static string UserDataDirectory()
         {
             try

@@ -72,7 +72,7 @@ namespace ColoringPixelsTool.Installer
             if (info.Warning != null) report.Warnings.Add(info.Warning);
 
             string root = EnsureTrailingSeparator(info.Directory);
-            string backupRoot = Path.Combine(root, AppInfo.ColoringPixels.BackupRelativePath);
+            string backupRoot = Path.Combine(root, AppInfo.ColoringVoxels.BackupRelativePath);
 
             Report(progress, 1, "校验完成：" + info.Directory + "（" + info.ArchitectureText + "）");
 
@@ -285,9 +285,9 @@ namespace ColoringPixelsTool.Installer
         /// <summary>安装完整性校验：缺任何一个关键文件都直接抛错。</summary>
         public static void Verify(string gameDir)
         {
-            string root = Path.GetDirectoryName(Path.Combine(gameDir, AppInfo.ColoringPixels.ExeName));
+            string root = Path.GetDirectoryName(Path.Combine(gameDir, AppInfo.ColoringVoxels.ExeName));
 
-            string plugin = Path.Combine(root, AppInfo.ColoringPixels.PluginRelativePath);
+            string plugin = Path.Combine(root, AppInfo.ColoringVoxels.PluginRelativePath);
             string preloader = Path.Combine(Path.Combine(Path.Combine(root, AppInfo.BepInExFolderName), "core"),
                 "BepInEx.Preloader.dll");
             string proxy = Path.Combine(root, "winhttp.dll");
@@ -310,7 +310,7 @@ namespace ColoringPixelsTool.Installer
             if (!info.Usable) throw new InvalidOperationException("游戏目录不可用：" + info.Error);
 
             string root = EnsureTrailingSeparator(info.Directory);
-            string backupRoot = Path.Combine(root, AppInfo.ColoringPixels.BackupRelativePath);
+            string backupRoot = Path.Combine(root, AppInfo.ColoringVoxels.BackupRelativePath);
 
             if (restoreBackup && Directory.Exists(backupRoot))
             {
@@ -363,7 +363,7 @@ namespace ColoringPixelsTool.Installer
         {
             try
             {
-                GameDescriptor game = AppInfo.ColoringPixels;
+                GameDescriptor game = AppInfo.ColoringVoxels;
                 if (File.Exists(Path.Combine(gameDir, game.PluginRelativePath))) return true;
                 return File.Exists(Path.Combine(gameDir, game.MarkerRelativePath));
             }
@@ -377,7 +377,7 @@ namespace ColoringPixelsTool.Installer
         {
             try
             {
-                string marker = Path.Combine(gameDir, AppInfo.ColoringPixels.MarkerRelativePath);
+                string marker = Path.Combine(gameDir, AppInfo.ColoringVoxels.MarkerRelativePath);
                 if (!File.Exists(marker)) return null;
 
                 foreach (string line in File.ReadAllLines(marker))
@@ -420,10 +420,10 @@ namespace ColoringPixelsTool.Installer
                     return running;
                 }
 
-                string exe = Path.Combine(gameDir, AppInfo.ColoringPixels.ExeName);
+                string exe = Path.Combine(gameDir, AppInfo.ColoringVoxels.ExeName);
                 if (!File.Exists(exe))
                 {
-                    error = "找不到 " + AppInfo.ColoringPixels.ExeName;
+                    error = "找不到 " + AppInfo.ColoringVoxels.ExeName;
                     return null;
                 }
 
@@ -469,8 +469,8 @@ namespace ColoringPixelsTool.Installer
             {
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("# " + AppInfo.ProductName + " 安装记录（删除本文件不影响使用）");
-                sb.AppendLine("game=" + AppInfo.ColoringPixels.Key);
-                sb.AppendLine("game_name=" + AppInfo.ColoringPixels.DisplayName);
+                sb.AppendLine("game=" + AppInfo.ColoringVoxels.Key);
+                sb.AppendLine("game_name=" + AppInfo.ColoringVoxels.DisplayName);
                 sb.AppendLine("version=" + AppInfo.AppVersion);
                 sb.AppendLine("plugin=" + AppInfo.PluginGuid);
                 sb.AppendLine("installed_at=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -479,7 +479,7 @@ namespace ColoringPixelsTool.Installer
                 sb.AppendLine("skipped=" + report.Skipped);
                 sb.AppendLine("backed_up=" + report.BackedUp);
 
-                string marker = Path.Combine(gameDir, AppInfo.ColoringPixels.MarkerRelativePath);
+                string marker = Path.Combine(gameDir, AppInfo.ColoringVoxels.MarkerRelativePath);
                 string dir = Path.GetDirectoryName(marker);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
 

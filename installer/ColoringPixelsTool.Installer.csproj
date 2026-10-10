@@ -30,6 +30,12 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- SDK 风格的 net48 工程默认不会带上这两个压缩程序集，缺了编译不过（PayloadInstaller 用到 ZipArchive）。 -->
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
   <Target Name="WarnMissingPayload" BeforeTargets="BeforeBuild" Condition="!Exists('$(PayloadZip)')">
     <Warning Text="未找到 $(PayloadZip)，生成的安装器将不含内嵌 payload。请先运行 scripts/build-payload.ps1" />
   </Target>
