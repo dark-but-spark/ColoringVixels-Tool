@@ -342,6 +342,23 @@ namespace ColoringPixelsTool
                 Ui.SurfaceEdge(r, 12f);
                 Ui.Text(new Rect(r.x + 16f, r.y, r.width - 32f, r.height), Reminder.BannerText, Ui.Center, Ui.Accent2);
             }
+
+            // 删除存档二次确认
+            if (HeartGuard.Pending)
+            {
+                var r = new Rect((Screen.width - 360f) * 0.5f, (Screen.height - 180f) * 0.5f, 360f, 180f);
+                Ui.Fill(new Rect(0f, 0f, Screen.width, Screen.height), Ui.Alpha(Ui.Scrim, 0.55f));
+                Ui.SurfaceEdge(r, 14f);
+                Ui.Text(new Rect(r.x + 18f, r.y + 16f, r.width - 36f, 24f), "删除存档确认", Ui.Bold, Ui.Bad);
+                GUI.Label(new Rect(r.x + 18f, r.y + 48f, r.width - 36f, 60f),
+                    "这会删除当前关卡的存档（进度不可恢复），确定要删除吗？", Ui.Label);
+
+                bool armed = Time.unscaledTime >= HeartGuard.ArmAt;
+                if (Ui.Button(new Rect(r.xMax - 118f, r.yMax - 50f, 100f, 34f), armed ? "确定删除" : "请稍候…", Ui.Bad, true) && armed)
+                    HeartGuard.Confirm();
+                if (Ui.Button(new Rect(r.x + 18f, r.yMax - 50f, 88f, 34f), "取消", Ui.Accent, false))
+                    HeartGuard.Cancel();
+            }
         }
     }
 }

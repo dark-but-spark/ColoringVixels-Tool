@@ -161,6 +161,9 @@ namespace ColoringPixelsTool
                 Log.Error("Harmony 补丁失败: " + e);
             }
 
+            try { HeartGuard.Patch(HarmonyInstance); }
+            catch (System.Exception e) { Log.Warn("删除存档二次确认未启用：" + e.Message); }
+
             var painter = gameObject.AddComponent<AutoPainter>();
             painter.CellsPerSecond = AutoSpeed.Value;
             painter.StrokeLength = AutoStroke.Value;
