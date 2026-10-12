@@ -170,6 +170,7 @@ namespace ColoringPixelsTool
             painter.AutoSave = AutoSaveAfterRun.Value;
 
             gameObject.AddComponent<AutoScheduler>();
+            gameObject.AddComponent<CheatPanel>();
 
             Log.Info(PluginName + " v" + Version + " 已加载 —— 按 " + KeyToggle.Value + " 打开面板");
         }
@@ -181,6 +182,7 @@ namespace ColoringPixelsTool
             UserProfile.TickSave(dt);
             PaintTimer.Tick(dt);
             Stats.Tick(dt);
+            Reminder.Tick(dt);
 
             HandleHotkeys();
         }
