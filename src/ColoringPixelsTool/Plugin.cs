@@ -172,6 +172,9 @@ namespace ColoringPixelsTool
             gameObject.AddComponent<AutoScheduler>();
             gameObject.AddComponent<CheatPanel>();
 
+            try { ManualTracker.Ensure(transform); }
+            catch (System.Exception e) { Log.Warn("初始化人工涂色统计失败：" + e.Message); }
+
             Log.Info(PluginName + " v" + Version + " 已加载 —— 按 " + KeyToggle.Value + " 打开面板");
         }
 
