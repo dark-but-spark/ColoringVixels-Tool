@@ -35,6 +35,7 @@ namespace ColoringPixelsTool
         private float _countdownMinutes = 45f;
 
         private readonly CanvasPreview _preview = new CanvasPreview();
+        private Vector2 _scroll;
 
         private void Awake()
         {
@@ -120,28 +121,74 @@ namespace ColoringPixelsTool
             // 顶部渐隐条
             Ui.Fill(new Rect(w.x, w.y, w.width, 50f), Ui.Alpha(Ui.WindowTop, 0.65f));
 
-            float y = w.y + Pad;
-            float innerW = w.width - Pad * 2f;
+            float hy = w.y + Pad;
+            float headW = w.width - Pad * 2f;
 
             // 标题栏
-            Ui.Text(new Rect(w.x + Pad, y, innerW - 40f, 24f),
+            Ui.Text(new Rect(w.x + Pad, hy, headW - 40f, 24f),
                 Plugin.PluginName, Ui.Title, Ui.TextCol);
-            Ui.Text(new Rect(w.x + Pad, y + 22f, innerW - 40f, 16f),
+            Ui.Text(new Rect(w.x + Pad, hy + 22f, headW - 40f, 16f),
                 "v" + Plugin.Version + " · 3D 体素版", Ui.MutedSmall);
 
-            var close = new Rect(w.xMax - Pad - 24f, y + 2f, 24f, 24f);
+            var close = new Rect(w.xMax - Pad - 24f, hy + 2f, 24f, 24f);
             if (Ui.Button(close, "×", Ui.Bad, true)) _visible = false;
-            y += 50f;
 
-            DrawLevelSection(w, ref y, innerW);
-            DrawPreviewSection(w, ref y, innerW);
-            DrawAutoSection(w, ref y, innerW);
-            DrawSchedulerSection(w, ref y, innerW);
-            DrawUnlockSection(w, ref y, innerW);
+            // 内容区（可滚动）
+            float top = w.y + 50f;
+            var view = new Rect(w.x + Pad, top, headW, w.yMax - top - Pad);
+            var content = new Rect(0f, 0f, view.width, Mathf.Max(view.height, 980f));
+
+            _scroll = GUI.BeginScrollView(view, _scroll, content);
+
+            var cr = new Rect(0f, 0f, view.width, 0f);
+            float innerW = view.width;
+            float y = 0f;
+
+            DrawLevelSection(cr, ref y, innerW);
+            DrawPreviewSection(cr, ref y, innerW);
+            DrawAutoSection(cr, ref y, innerW);
+            DrawSchedulerSection(cr, ref y, innerW);
+            DrawUnlockSection(cr, ref y, innerW);
+            DrawSettingsSection(cr, ref y, innerW);
+
+            GUI.EndScrollView();
 
             // 底部提示
             if (Time.unscaledTime < _toastUntil && !string.IsNullOrEmpty(_toast))
-                Ui.Text(new Rect(w.x + Pad, w.yMax - 26f, innerW, 18f), _toast, Ui.MutedSmall, Ui.Accent2);
+                Ui.Text(new Rect(w.x + Pad, w.yMax - 26f, headW, 18f), _toast, Ui.MutedSmall, Ui.Accent2);
+        }
+
+        private void DrawSettingsSection(Rect w, ref float y, float innerW)
+        {
+            Ui.Section(new Rect(w.x + Pad, y, innerW, 16f), "游戏设置");
+            y += 24f;
+
+            if (Ui.Button(new Rect(w.x + Pad, y, innerW, 32f), "恢复游戏默认设置", Ui.Warn, false))
+                Toast("已恢复 " + GameSettings.RestoreDefaults() + " 项");
+            y += 40f;
+
+            foreach (var d in GameSettings.Sliders)
+            {
+                float v = GameSettings.ReadSlider(d);
+                float nv = Ui.SliderRow("gs-" + d.Key, new Rect(w.x + Pad, y, innerW, 34f),
+                    v, d.Min, d.Max, d.Label, FormatSlider(d, v), d.Integer);
+                if (Mathf.Abs(nv - v) > 0.0001f) GameSettings.WriteSlider(d, nv);
+                y += 38f;
+            }
+
+            foreach (var d in GameSettings.Toggles)
+            {
+                bool v = GameSettings.ReadToggle(d);
+                bool nv = Ui.ToggleRow(new Rect(w.x + Pad, y, innerW, 40f), v, d.Label, d.Desc);
+                if (nv != v) GameSettings.WriteToggle(d, nv);
+                y += 44f;
+            }
+        }
+
+        private static string FormatSlider(GameSettings.SliderDef d, float v)
+        {
+            if (d.Max <= 1f && d.Min >= 0f && !d.Integer) return (v * 100f).ToString("0") + "%";
+            return d.Integer ? ((int)v).ToString() : v.ToString("0.0");
         }
 
         private void DrawLevelSection(Rect w, ref float y, float innerW)
