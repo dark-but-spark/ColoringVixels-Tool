@@ -163,8 +163,24 @@ namespace ColoringPixelsTool
             Ui.Section(new Rect(w.x + Pad, y, innerW, 16f), "游戏设置");
             y += 24f;
 
-            if (Ui.Button(new Rect(w.x + Pad, y, innerW, 32f), "恢复游戏默认设置", Ui.Warn, false))
-                Toast("已恢复 " + GameSettings.RestoreDefaults() + " 项");
+            if (Ui.Button(new Rect(w.x + Pad, y, innerW, 24f), "应用推荐预设", Ui.Accent, false) )
+                Toast("套用推荐预设，改了 " + GamePreset.ApplyRecommended() + " 项");
+            y += 30f;
+
+            float bw = (innerW - 6f) * 0.5f;
+            if (Ui.Button(new Rect(w.x + Pad, y, bw, 30f), "撤销上次改动", Ui.Accent2, false))
+                Toast(GamePreset.UndoLast() ? "已撤销上次改动" : "没有可撤销的快照");
+            if (Ui.Button(new Rect(w.x + Pad + bw + 6f, y, bw, 30f), "存为预设", Ui.Good, false))
+            {
+                GamePreset.SaveCurrentAsPreset();
+                Toast("已把当前设置存为预设");
+            }
+            y += 36f;
+
+            if (Ui.Button(new Rect(w.x + Pad, y, bw, 30f), "套用自定义预设", Ui.Accent2, false))
+                Toast("套用自定义预设，改了 " + GamePreset.ApplyCustom() + " 项");
+            if (Ui.Button(new Rect(w.x + Pad + bw + 6f, y, bw, 30f), "恢复游戏默认", Ui.Warn, false))
+                Toast("已恢复 " + GamePreset.ApplyGameDefaults() + " 项");
             y += 40f;
 
             foreach (var d in GameSettings.Sliders)
