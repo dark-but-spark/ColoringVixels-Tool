@@ -175,6 +175,7 @@ namespace ColoringPixelsTool
             gameObject.AddComponent<AutoScheduler>();
             gameObject.AddComponent<CheatPanel>();
             gameObject.AddComponent<ColorHighlighter>();
+            gameObject.AddComponent<GameFontFallback>();
 
             try { ManualTracker.Ensure(transform); }
             catch (System.Exception e) { Log.Warn("初始化人工涂色统计失败：" + e.Message); }
