@@ -15,6 +15,14 @@ namespace ColoringVoxelsTool
         /// <summary>由 Harmony 前缀读取，为 true 时 DLC 拥有判定恒为真。</summary>
         public static bool ForceDlcOwned;
 
+        // ---- 面板沿用的兼容名（3D 版）----
+
+        /// <summary>3D 版没有独立的提示系统，保留签名以兼容面板，不再改写数值。</summary>
+        public static void ApplyHintMode(bool enabled, int mode, ref int original) { }
+
+        public static int RevealAllBooks() => RevealAllWorlds();
+        public static int CompleteAllBooks() => CompleteAllWorlds();
+
         // ------------------------------------------------------------- 世界
 
         /// <summary>让所有世界（含隐藏 / DLC）在菜单中可见。</summary>

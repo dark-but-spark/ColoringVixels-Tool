@@ -180,6 +180,8 @@ namespace ColoringVoxelsTool
             try { ManualTracker.Ensure(transform); }
             catch (System.Exception e) { Log.Warn("初始化人工涂色统计失败：" + e.Message); }
 
+            GamePreset.Reload();
+
             Log.Info(PluginName + " v" + Version + " 已加载 —— 按 " + KeyToggle.Value + " 打开面板");
         }
 

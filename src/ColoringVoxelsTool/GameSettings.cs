@@ -1,161 +1,292 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
 using UnityEngine;
 
 namespace ColoringVoxelsTool
 {
+    /// <summary>游戏设置项的类型。</summary>
+    internal enum SettingKind
+    {
+        Toggle = 0,
+        IntSlider = 1,
+        FloatSlider = 2
+    }
+
+    /// <summary>一条游戏设置项（3D 版）。</summary>
+    internal sealed class SettingDef
+    {
+        public string Field;          // 唯一键（对应 MainMenuSaveData 字段名）
+        public string Label;
+        public string Desc;
+        public string Section;
+        public SettingKind Kind = SettingKind.Toggle;
+        public int Min;
+        public int Max = 1;
+        public float MinF;
+        public float MaxF = 1f;
+        public string[] Options;
+        public float DisplayScale = 1f;
+        public string SliderName;
+        public object Default;
+    }
+
     /// <summary>
     /// 游戏自带设置的一份可编程镜像（3D 版）。
     ///
-    /// 游戏把这些设置存在 <see cref="MainMenuSaveData"/>（随存档存盘）里，开关与滑条由
-    /// <see cref="SettingsToggle"/> / <see cref="SettingsSlider"/> 读写。这里把每一项收拢成
-    /// 「标题 + 读/写委托 + 默认值」，供面板与「推荐预设 / 恢复默认」统一调用。
-    ///
+    /// 游戏把这些设置存在 <see cref="MainMenuSaveData"/>（随存档存盘）里；这里把每一项收拢成
+    /// 「标题 + 读写委托 + 默认值」，供面板的「游戏预设」页与「推荐预设 / 恢复默认」统一调用。
     /// 写值后统一 <c>SaveManager.SaveMainMenuData()</c> 落盘；带界面副作用的项额外触发对应刷新。
     /// </summary>
     internal static class GameSettings
     {
-        internal sealed class ToggleDef
+        internal const string SecAccessibility = "界面与无障碍（ACCESSIBILITY）";
+        internal const string SecMainMenu = "主菜单（MAIN MENU）";
+        internal const string SecInGame = "游戏内（IN GAME）";
+        internal const string SecMusic = "音乐（SETTINGS）";
+
+        private static readonly Dictionary<string, Func<object>> Getters = new Dictionary<string, Func<object>>();
+        private static readonly Dictionary<string, Action<object>> Setters = new Dictionary<string, Action<object>>();
+        private static Dictionary<string, object> _snapshot;
+
+        public static bool Ready
         {
-            public string Label;
-            public string Desc;
-            public Func<bool> Get;
-            public Action<bool> Set;
-            public bool Default;
-            public Action OnChanged;
+            get { return GameApi.St != null && GameApi.St.mainMenuSaveData != null; }
         }
 
-        internal sealed class SliderDef
+        internal static readonly SettingDef[] All = Build();
+
+        private static SettingDef[] Build()
         {
-            public string Key;
-            public string Label;
-            public string Desc;
-            public Func<float> Get;
-            public Action<float> Set;
-            public float Min;
-            public float Max;
-            public bool Integer;
-            public float Default;
-            public Action OnChanged;
+            var list = new List<SettingDef>();
+
+            // ---------------- 界面与无障碍 ----------------
+            list.Add(Toggle("darkMode", "暗色模式", "深色底，夜里更省眼", SecAccessibility,
+                m => m.darkMode, (m, v) => m.darkMode = v, false, RefreshMaterials));
+            list.Add(Toggle("showTimer", "显示计时器", "关卡里显示本图用时", SecAccessibility,
+                m => m.showTimer, (m, v) => m.showTimer = v, false));
+            list.Add(Toggle("showCompletion", "显示完成度", "关卡里显示完成百分比", SecAccessibility,
+                m => m.showCompletion, (m, v) => m.showCompletion = v, false));
+
+            // ---------------- 主菜单 ----------------
+            list.Add(Toggle("hideLevelNames", "隐藏关卡名", "未完成的关卡名显示为 ???", SecMainMenu,
+                m => m.hideLevelNames, (m, v) => m.hideLevelNames = v, false, RefreshLevelItems));
+            list.Add(Toggle("legacyBookSelect", "旧版选书", "用旧式书籍选择界面", SecMainMenu,
+                m => m.legacyBookSelect, (m, v) => m.legacyBookSelect = v, false, RefreshWorldSelect));
+            list.Add(Toggle("mainMenuBox", "主菜单盒子", "主菜单显示装饰盒子", SecMainMenu,
+                m => !m.mainMenuBox, (m, v) => m.mainMenuBox = !v, true));
+
+            // ---------------- 游戏内 ----------------
+            list.Add(Toggle("gridDisabled", "显示网格", "地面显示格子网格", SecInGame,
+                m => !m.gridDisabled, (m, v) => m.gridDisabled = !v, true));
+            list.Add(Toggle("gridFollow", "网格跟随视角", "网格随相机高度移动", SecInGame,
+                m => m.gridFollow, (m, v) => m.gridFollow = v, false));
+            list.Add(Toggle("removeCompletedLayers", "完成后移除层", "涂满的层自动隐藏", SecInGame,
+                m => m.removeCompletedLayers, (m, v) => m.removeCompletedLayers = v, false));
+            list.Add(Toggle("disableVoxelNewAnim", "新方块动画", "新涂方块出现时的缩放动画", SecInGame,
+                m => !m.disableVoxelNewAnim, (m, v) => m.disableVoxelNewAnim = !v, true));
+            list.Add(Toggle("disableVoxelHoverAnim", "悬停动画", "鼠标悬停方块的放大反馈", SecInGame,
+                m => !m.disableVoxelHoverAnim, (m, v) => m.disableVoxelHoverAnim = !v, true));
+            list.Add(Toggle("disableVoxelCompletedAnim", "完成动画", "涂对时方块的完成动画", SecInGame,
+                m => !m.disableVoxelCompletedAnim, (m, v) => m.disableVoxelCompletedAnim = !v, true));
+            list.Add(Toggle("toggleClickWhenCompleteColour", "涂完自动跳色", "一种颜色涂完自动切到下一种", SecInGame,
+                m => !m.toggleClickWhenCompleteColour, (m, v) => m.toggleClickWhenCompleteColour = !v, true));
+            list.Add(Toggle("colorPaletteToLayer", "调色板按层", "调色板只显示当前层的颜色", SecInGame,
+                m => !m.colorPaletteToLayer, (m, v) => m.colorPaletteToLayer = !v, true));
+            list.Add(Toggle("hideCompletedColours", "隐藏已完成颜色", "把涂完的颜色从调色板移除", SecInGame,
+                m => !m.hideCompletedColours, (m, v) => m.hideCompletedColours = !v, true));
+            list.Add(Toggle("colorLock", "颜色锁定", "涂错后按目标色显示", SecInGame,
+                m => !m.colorLock, (m, v) => m.colorLock = !v, true));
+            list.Add(Toggle("hideNonEssentialVoxels", "隐藏非必要体素", "跳过装饰性小体素", SecInGame,
+                m => m.hideNonEssentialVoxels, (m, v) => m.hideNonEssentialVoxels = v, false));
+            list.Add(Toggle("seasonalEventsDisabled", "季节特效", "显示节日 / 活动特效", SecInGame,
+                m => !m.seasonalEventsDisabled, (m, v) => m.seasonalEventsDisabled = !v, true, RefreshSeasonal));
+
+            // ---------------- 音乐 ----------------
+            list.Add(Slider("musicVolume", "音乐音量", "背景音乐音量", SecMusic, 0f, 1f, false,
+                m => m.musicVolume, (m, v) => m.musicVolume = v, 0.7f, RefreshMusic));
+            list.Add(Slider("sfxVolume", "音效音量", "按钮 / 涂色音效音量", SecMusic, 0f, 1f, false,
+                m => m.sfxVolume, (m, v) => m.sfxVolume = v, 0.7f, RefreshMusic));
+
+            return list.ToArray();
         }
 
-        internal static readonly ToggleDef[] Toggles =
-        {
-            T("暗色模式", "深色底，夜里更省眼", MM(m => m.darkMode), MM((m, v) => m.darkMode = v), false, () => RefreshMaterials()),
-            T("显示计时器", "关卡里显示本图用时", MM(m => m.showTimer), MM((m, v) => m.showTimer = v), false),
-            T("显示完成度", "关卡里显示完成百分比", MM(m => m.showCompletion), MM((m, v) => m.showCompletion = v), false),
-            T("隐藏关卡名", "未完成的关卡名显示为 ???", MM(m => m.hideLevelNames), MM((m, v) => m.hideLevelNames = v), false, () => RefreshLevelItems()),
-            T("点击切换涂色", "点一下切换按住 / 松开，不用一直压着鼠标", MM(m => m.toggleClick), MM((m, v) => m.toggleClick = v), false),
-            T("显示网格", "地面显示格子网格", MM(m => !m.gridDisabled), MM((m, v) => m.gridDisabled = !v), true),
-            T("网格跟随视角", "网格随相机高度移动", MM(m => m.gridFollow), MM((m, v) => m.gridFollow = v), false),
-            T("完成后移除层", "涂满的层自动隐藏", MM(m => m.removeCompletedLayers), MM((m, v) => m.removeCompletedLayers = v), false),
-            T("新方块动画", "新涂方块出现时的缩放动画", MM(m => !m.disableVoxelNewAnim), MM((m, v) => m.disableVoxelNewAnim = !v), true),
-            T("悬停动画", "鼠标悬停方块的放大反馈", MM(m => !m.disableVoxelHoverAnim), MM((m, v) => m.disableVoxelHoverAnim = !v), true),
-            T("完成动画", "涂对时方块的完成动画", MM(m => !m.disableVoxelCompletedAnim), MM((m, v) => m.disableVoxelCompletedAnim = !v), true),
-            T("主菜单盒子", "主菜单显示装饰盒子", MM(m => !m.mainMenuBox), MM((m, v) => m.mainMenuBox = !v), true),
-            T("涂完自动跳色", "一种颜色涂完自动切到下一种", MM(m => !m.toggleClickWhenCompleteColour), MM((m, v) => m.toggleClickWhenCompleteColour = !v), true),
-            T("调色板按层", "调色板只显示当前层的颜色", MM(m => !m.colorPaletteToLayer), MM((m, v) => m.colorPaletteToLayer = !v), true),
-            T("隐藏已完成颜色", "把涂完的颜色从调色板移除", MM(m => !m.hideCompletedColours), MM((m, v) => m.hideCompletedColours = !v), true),
-            T("颜色锁定", "涂错后按目标色显示", MM(m => !m.colorLock), MM((m, v) => m.colorLock = !v), true),
-            T("隐藏非必要体素", "跳过装饰性小体素", MM(m => m.hideNonEssentialVoxels), MM((m, v) => m.hideNonEssentialVoxels = v), false),
-            T("季节特效", "显示节日 / 活动特效", MM(m => !m.seasonalEventsDisabled), MM((m, v) => m.seasonalEventsDisabled = !v), true, () => RefreshSeasonal()),
-            T("旧版选书", "用旧式书籍选择界面", MM(m => m.legacyBookSelect), MM((m, v) => m.legacyBookSelect = v), false, () => RefreshWorldSelect()),
-        };
+        // ---------------------------------------------------------------- 读写
 
-        internal static readonly SliderDef[] Sliders =
+        public static bool GetBool(string field)
         {
-            S("music", "音乐音量", "背景音乐音量", MM(m => m.musicVolume), MM((m, v) => m.musicVolume = v), 0f, 1f, false, 0.7f, () => RefreshMusic()),
-            S("sfx", "音效音量", "按钮 / 涂色音效音量", MM(m => m.sfxVolume), MM((m, v) => m.sfxVolume = v), 0f, 1f, false, 0.7f, () => RefreshMusic()),
-        };
-
-        // ------------------------------------------------------------ 读写
-
-        public static bool ReadToggle(ToggleDef d)
-        {
-            try { return d.Get(); } catch (Exception) { return d.Default; }
+            Func<object> g;
+            if (!Getters.TryGetValue(field, out g)) return false;
+            try { return (bool)g(); } catch (Exception) { return false; }
         }
 
-        public static void WriteToggle(ToggleDef d, bool value)
+        public static float GetFloat(string field)
         {
-            try
+            Func<object> g;
+            if (!Getters.TryGetValue(field, out g)) return 0f;
+            try { return Convert.ToSingle(g(), CultureInfo.InvariantCulture); } catch (Exception) { return 0f; }
+        }
+
+        public static int IntOf(SettingDef d)
+        {
+            return (int)Mathf.Round(GetFloat(d.Field));
+        }
+
+        public static void SetValue(SettingDef d, object value)
+        {
+            if (d == null) return;
+            Action<object> s;
+            if (Setters.TryGetValue(d.Field, out s))
             {
-                d.Set(value);
-                if (d.OnChanged != null) d.OnChanged();
-                SaveManager.SaveMainMenuData();
+                try { s(value); } catch (Exception e) { Debug.LogWarning("[CGV] 写入设置失败：" + e.Message); }
             }
-            catch (Exception e) { Debug.LogWarning("[CGV] 写入设置失败：" + e.Message); }
+            try { SaveManager.SaveMainMenuData(); } catch (Exception) { }
         }
 
-        public static float ReadSlider(SliderDef d)
+        public static void Range(SettingDef d, out float min, out float max)
         {
-            try { return d.Get(); } catch (Exception) { return d.Default; }
+            if (d == null) { min = 0f; max = 1f; return; }
+            if (d.Kind == SettingKind.FloatSlider) { min = d.MinF; max = d.MaxF; }
+            else { min = d.Min; max = d.Max; }
         }
 
-        public static void WriteSlider(SliderDef d, float value)
+        public static string DisplayOf(SettingDef d, float cur)
         {
-            try
+            if (d == null) return "-";
+            if (d.Options != null)
             {
-                d.Set(value);
-                if (d.OnChanged != null) d.OnChanged();
-                SaveManager.SaveMainMenuData();
+                int i = Mathf.Clamp(Mathf.RoundToInt(cur), 0, d.Options.Length - 1);
+                return d.Options[i];
             }
-            catch (Exception e) { Debug.LogWarning("[CGV] 写入设置失败：" + e.Message); }
+            if (d.Kind == SettingKind.FloatSlider)
+                return (cur * d.DisplayScale).ToString("0.##", CultureInfo.InvariantCulture);
+            return ((int)Mathf.Round(cur)).ToString(CultureInfo.InvariantCulture);
         }
 
-        /// <summary>全部恢复成出厂默认。</summary>
-        public static int RestoreDefaults()
+        // ---------------------------------------------------------------- 快照 / 撤销 / 预设
+
+        private static object Current(SettingDef d)
+        {
+            if (d.Kind == SettingKind.Toggle) return GetBool(d.Field);
+            if (d.Kind == SettingKind.IntSlider) return IntOf(d);
+            return GetFloat(d.Field);
+        }
+
+        public static void CaptureSnapshot()
+        {
+            _snapshot = new Dictionary<string, object>();
+            foreach (var d in All)
+            {
+                try { _snapshot[d.Field] = Current(d); } catch (Exception) { }
+            }
+        }
+
+        public static bool UndoAvailable
+        {
+            get { return _snapshot != null && _snapshot.Count > 0; }
+        }
+
+        public static string UndoLastApply()
+        {
+            if (_snapshot == null) return "没有可撤销的快照";
+            int n = 0;
+            foreach (var d in All)
+            {
+                object v;
+                if (!_snapshot.TryGetValue(d.Field, out v)) continue;
+                if (!Equals(Current(d), v)) { SetValue(d, v); n++; }
+            }
+            return "已撤销上次改动（" + n + " 项）";
+        }
+
+        public static int DiffFromDefaults()
         {
             int n = 0;
-            foreach (ToggleDef d in Toggles) { if (ReadToggle(d) != d.Default) { WriteToggle(d, d.Default); n++; } }
-            foreach (SliderDef d in Sliders) { if (Mathf.Abs(ReadSlider(d) - d.Default) > 0.001f) { WriteSlider(d, d.Default); n++; } }
+            foreach (var d in All)
+                if (!Equals(Current(d), d.Default)) n++;
             return n;
         }
 
-        // ------------------------------------------------------------ 副作用刷新
+        public static string RestoreDefaults()
+        {
+            int n = 0;
+            foreach (var d in All)
+            {
+                if (!Equals(Current(d), d.Default)) { SetValue(d, d.Default); n++; }
+            }
+            return "已恢复 " + n + " 项到游戏默认";
+        }
+
+        public static string SaveAsPreset()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("# ColoringVoxelsTool 游戏设置预设（键 = 值）");
+            foreach (var d in All)
+            {
+                if (d.Kind == SettingKind.Toggle)
+                    sb.Append(d.Field).Append('=').Append(GetBool(d.Field) ? "1" : "0").AppendLine();
+                else if (d.Kind == SettingKind.IntSlider)
+                    sb.Append(d.Field).Append('=').Append(IntOf(d)).AppendLine();
+                else
+                    sb.Append(d.Field).Append('=')
+                      .Append(GetFloat(d.Field).ToString("F3", CultureInfo.InvariantCulture)).AppendLine();
+            }
+            try { AppPaths.WriteAtomic(GamePreset.FilePath, sb.ToString()); return "已存为预设：" + GamePreset.FilePath; }
+            catch (Exception e) { return "保存预设失败：" + e.Message; }
+        }
+
+        public static void Flush()
+        {
+            try { SaveManager.SaveMainMenuData(); } catch (Exception) { }
+        }
+
+        /// <summary>面板每帧调用；目前无需周期任务。</summary>
+        public static void Tick() { }
+
+        // ---------------------------------------------------------------- 副作用刷新
 
         private static void RefreshMaterials() { try { MaterialManager.Inst?.RefreshMaterials(); } catch (Exception) { } }
         private static void RefreshLevelItems() { try { WorldVisualiser.Inst?.RefreshLevelItems(); } catch (Exception) { } }
         private static void RefreshWorldSelect() { try { WorldSelectPopulator.Inst?.InitialiseButtons(); } catch (Exception) { } }
         private static void RefreshMusic() { try { MusicManager.Inst.UpdateVolume(); } catch (Exception) { } }
-
         private static void RefreshSeasonal()
         {
             try { EventManager.Inst.FindCurrentEvent(); EventManager.Inst.RefreshAllGraphics(); }
             catch (Exception) { }
         }
 
-        // ------------------------------------------------------------ 构造委托
+        // ---------------------------------------------------------------- 构造
 
-        private static ToggleDef T(string label, string desc, Func<bool> get, Action<bool> set, bool def, Action onChanged = null)
+        private static SettingDef Toggle(string field, string label, string desc, string section,
+            Func<MainMenuSaveData, bool> get, Action<MainMenuSaveData, bool> set, bool def, Action onChanged = null)
         {
-            return new ToggleDef { Label = label, Desc = desc, Get = get, Set = set, Default = def, OnChanged = onChanged };
+            Getters[field] = () => get(GameApi.St.mainMenuSaveData);
+            Setters[field] = v =>
+            {
+                set(GameApi.St.mainMenuSaveData, Convert.ToBoolean(v, CultureInfo.InvariantCulture));
+                if (onChanged != null) onChanged();
+            };
+            return new SettingDef { Field = field, Label = label, Desc = desc, Section = section, Kind = SettingKind.Toggle, Default = def };
         }
 
-        private static SliderDef S(string key, string label, string desc, Func<float> get, Action<float> set,
-            float min, float max, bool integer, float def, Action onChanged = null)
+        private static SettingDef Slider(string field, string label, string desc, string section,
+            float min, float max, bool integer, Func<MainMenuSaveData, float> get, Action<MainMenuSaveData, float> set,
+            float def, Action onChanged = null)
         {
-            return new SliderDef { Key = key, Label = label, Desc = desc, Get = get, Set = set, Min = min, Max = max, Integer = integer, Default = def, OnChanged = onChanged };
-        }
-
-        // MainMenuSaveData 便捷读/写委托（存档实例由 GameApi.St 提供）
-        private static Func<bool> MM(Func<MainMenuSaveData, bool> get)
-        {
-            return () => get(GameApi.St.mainMenuSaveData);
-        }
-
-        private static Action<bool> MM(Action<MainMenuSaveData, bool> set)
-        {
-            return v => set(GameApi.St.mainMenuSaveData, v);
-        }
-
-        private static Func<float> MM(Func<MainMenuSaveData, float> get)
-        {
-            return () => get(GameApi.St.mainMenuSaveData);
-        }
-
-        private static Action<float> MM(Action<MainMenuSaveData, float> set)
-        {
-            return v => set(GameApi.St.mainMenuSaveData, v);
+            Getters[field] = () => get(GameApi.St.mainMenuSaveData);
+            Setters[field] = v =>
+            {
+                set(GameApi.St.mainMenuSaveData, Convert.ToSingle(v, CultureInfo.InvariantCulture));
+                if (onChanged != null) onChanged();
+            };
+            return new SettingDef
+            {
+                Field = field, Label = label, Desc = desc, Section = section,
+                Kind = integer ? SettingKind.IntSlider : SettingKind.FloatSlider,
+                Min = (int)min, Max = (int)max, MinF = min, MaxF = max, Default = def
+            };
         }
     }
 }

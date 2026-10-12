@@ -34,9 +34,14 @@ namespace ColoringVoxelsTool
         public int BlockSize = 8;
         public int StrokeLength = 30;
         public float PauseChance = 0.4f;
+        public float MistakeChance = 0f;
         public bool LargestColourFirst;
+        public bool HighlightColour = true;
         public bool AutoSave = true;
         public int RestrictToColour;
+
+        /// <summary>当前正在涂的颜色（0 基）；面板显示用。</summary>
+        public int ColourId => CurrentColour;
 
         private Builder _b;
         private readonly System.Random _rng = new System.Random(Environment.TickCount);

@@ -516,5 +516,109 @@ namespace ColoringVoxelsTool
             try { SaveManager.SaveLevelData(st.levelData.saveFileName); }
             catch (Exception e) { Debug.LogWarning("[CGV] 保存失败：" + e.Message); }
         }
+
+        // ================================================================ 面板兼容层
+        // 面板（UI）是从 2D 版沿用下来的，习惯按 ClickTest 的形状读取数据。
+        // 这里提供一个只读视图与若干同名方法，让面板 UI 原样保留、底层换成 3D 数据。
+
+        /// <summary>面板沿用的 2D 关卡视图（只读，映射到当前 3D 关卡）。</summary>
+        internal sealed class LevelView
+        {
+            public int xMax;
+            public int yMax;
+            public int pixelsColored;
+            public float yScale = 1f;
+            public bool inputDisabled;
+            public bool gameOver;
+            public int selectedColourID;   // 1 基（与面板显示一致）
+            public int[] colourCounts;
+        }
+
+        private static string _coloursKey;
+        private static List<Color> _colours;
+
+        /// <summary>当前关卡颜色真彩表（面板调色板 / 预览用）。</summary>
+        public static List<Color> Colours
+        {
+            get
+            {
+                Builder b = B;
+                if (b == null || St == null) return null;
+                int count = ColourCount(b);
+                if (count <= 0) return null;
+                string key = LevelKey + ":" + count;
+                if (_colours != null && key == _coloursKey) return _colours;
+
+                var list = new List<Color>(count);
+                for (int i = 0; i < count; i++) list.Add(ColourOf(b, i));
+                _colours = list;
+                _coloursKey = key;
+                return list;
+            }
+        }
+
+        /// <summary>面板沿用的 2D ClickTest 形状视图；不在关卡时返回 null。</summary>
+        public static LevelView Ct
+        {
+            get
+            {
+                Builder b = B;
+                if (!InLevel(b)) return null;
+                Size(b, out int xn, out int _, out int zn);
+                return new LevelView
+                {
+                    xMax = xn,
+                    yMax = zn,
+                    pixelsColored = PaintedVoxels(b),
+                    gameOver = b.gameState == Builder.GameState.Finished,
+                    selectedColourID = b.selectedCol + 1,
+                    colourCounts = ColourCounts(b),
+                };
+            }
+        }
+
+        public static bool InLevel(LevelView lv) => lv != null;
+        public static int TotalPixels(LevelView lv) => TotalVoxels(B);
+        public static int PaintedPixels(LevelView lv) => PaintedVoxels(B);
+        public static int RemainingPixels(LevelView lv) => RemainingVoxels(B);
+        public static float Progress(LevelView lv) => Progress(B);
+        public static int CurrentBookIndex => CurrentWorldIndex;
+
+        public static int FillSelectedColour()
+        {
+            Builder b = B;
+            return InLevel(b) ? FillLayerColour(b, b.selectedCol) : 0;
+        }
+
+        /// <summary>面板调色板点击用：涂完指定颜色（1 基，与面板显示一致）。</summary>
+        public static int FillColour(int colourId)
+        {
+            Builder b = B;
+            if (!InLevel(b) || colourId < 1) return 0;
+            return FillLayerColour(b, colourId - 1);
+        }
+
+        public static int InstantFill()
+        {
+            Builder b = B;
+            return InLevel(b) ? FillLayer(b) : 0;
+        }
+
+        public static void SaveNow() => SaveNow(B);
+
+        /// <summary>面板「重载关卡 / 清空画布」用；3D 版按体素擦除。</summary>
+        public static void EraseAll()
+        {
+            Builder b = B;
+            if (!InLevel(b)) return;
+            if (!Size(b, out int xn, out int yn, out int zn)) return;
+            for (int y = 0; y < yn; y++)
+                for (int x = 0; x < xn; x++)
+                    for (int z = 0; z < zn; z++)
+                        try { b.EraseCube(x, y, z); } catch (Exception) { }
+        }
+
+        /// <summary>面板沿用；3D 版没有等价的「就地重载」，留给关卡切换流程。</summary>
+        public static void SoftReset(LevelView lv) { }
     }
 }

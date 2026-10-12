@@ -20,15 +20,8 @@
     <CoreDir>$(MSBuildThisFileDirectory)..\..\vendor\bepinex-x64\BepInEx\core\</CoreDir>
   </PropertyGroup>
 
-  <!-- 待迁移的 2D 模块（人工辅助屏幕扫描 / 设置界面注入），暂不参与编译。 -->
+  <!-- 设置界面「推荐预设」按钮注入：依赖 2D 界面对象名，暂不参与编译。 -->
   <ItemGroup>
-    <Compile Remove="AssistAutoDetect.cs" />
-    <Compile Remove="AssistEngine.cs" />
-    <Compile Remove="AssistOverlay.cs" />
-    <Compile Remove="AssistRegion.cs" />
-    <Compile Remove="AssistStore.cs" />
-    <Compile Remove="AssistWin32.cs" />
-    <Compile Remove="GameSettingsPanel.cs" />
     <Compile Remove="PresetButtonInjector.cs" />
   </ItemGroup>
 
@@ -80,6 +73,10 @@
     </Reference>
     <Reference Include="UnityEngine.ScreenCaptureModule">
       <HintPath>$(ManagedDir)UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(ManagedDir)UnityEngine.ImageConversionModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Unity.TextMeshPro">

@@ -3,15 +3,15 @@
 namespace ColoringVoxelsTool
 {
     /// <summary>
-    /// 「预览」用的当前层缩略图（3D 版）：直接把游戏自己的体素数据拼成一张 Texture2D。
+    /// 「预览」页用的**当前层**缩略图（3D 版）：直接把游戏自己的体素数据拼成一张 Texture2D。
     ///
     /// 数据来源（全是游戏现成的，不截图、不受相机角度影响）：
     ///   Builder.voxelData[x,y,z].colourIndex —— 目标颜色编号
     ///   Builder.voxelProgress[x,y,z]         —— 已涂颜色编号
-    ///   LevelVersionData.colours[t].r/g/b    —— 颜色真彩
+    ///   LevelVersionData.colours[t]          —— 颜色真彩
     ///
     /// 一格 = 一个像素，采样用 Point：放大之后就是清楚的方格。只画当前选中的那一层。
-    /// 已涂对 = 目标色；没涂 = 压暗的「底稿」（可关）；不属于图案的格子 = 全透明。
+    /// 已涂对 = 目标色；没涂 = 压暗的「底稿」（可以关掉）；不属于图案的格子 = 全透明。
     /// </summary>
     internal sealed class CanvasPreview
     {
@@ -20,7 +20,6 @@ namespace ColoringVoxelsTool
         public int Rows { get; private set; }
         public int Painted { get; private set; }
         public int Total { get; private set; }
-        public int Layer { get; private set; } = -1;
 
         /// <summary>未涂的格子是否显示暗色底稿。</summary>
         public bool ShowGhost { get; set; } = true;
@@ -32,7 +31,7 @@ namespace ColoringVoxelsTool
         private float _idle;
         private string _key = "";
         private bool _lastGhost;
-        private int _lastSig = -1;
+        private int _lastPainted = -1;
 
         /// <summary>每帧调用：数据变了才重建贴图（带节流）。</summary>
         public void Refresh(float delta)
@@ -41,30 +40,27 @@ namespace ColoringVoxelsTool
             _idle += delta;
 
             var b = GameApi.B;
-            if (!GameApi.InLevel(b))
+            if (!GameApi.InLevel(b) || b.selectedLayer < 0)
             {
                 Release();
                 _key = "";
-                _lastSig = -1;
+                _lastPainted = -1;
                 return;
             }
 
-            int layer = b.selectedLayer;
-            if (layer < 0) { Release(); return; }
-
-            int sig = GameApi.PaintedVoxels(b);
-            string key = GameApi.LevelKey + ":" + layer;
+            int painted = GameApi.PaintedVoxels(b);
+            string key = GameApi.LevelKey + ":" + b.selectedLayer;
             bool changed = Texture == null
                            || key != _key
                            || ShowGhost != _lastGhost
-                           || sig != _lastSig
+                           || painted != _lastPainted
                            || _idle >= HeartbeatInterval;
 
             if (!changed || _cooldown > 0f) return;
 
             _cooldown = RebuildInterval;
             _idle = 0f;
-            Build(b, layer, key, sig);
+            Build(b, key, painted);
         }
 
         /// <summary>释放贴图（离开关卡 / 面板关闭时调用）。</summary>
@@ -75,16 +71,17 @@ namespace ColoringVoxelsTool
             Texture = null;
         }
 
-        private void Build(Builder b, int layer, string key, int sig)
+        private void Build(Builder b, string key, int painted)
         {
             if (!GameApi.Size(b, out int cols, out int _, out int rows)) { Release(); return; }
+            int layer = b.selectedLayer;
             if (layer < 0 || layer >= b.voxelProgress.GetLength(1)) { Release(); return; }
 
             var px = new Color32[cols * rows];
             Color32 clear = new Color32(0, 0, 0, 0);
             short[,,] vp = b.voxelProgress;
 
-            int painted = 0;
+            int paintedCount = 0;
             int total = 0;
 
             for (int x = 0; x < cols; x++)
@@ -100,7 +97,7 @@ namespace ColoringVoxelsTool
                         Color col = GameApi.ColourOf(b, t);
                         if (vp[x, layer, z] == t)
                         {
-                            painted++;
+                            paintedCount++;
                             c = col;
                         }
                         else if (ShowGhost)
@@ -127,12 +124,11 @@ namespace ColoringVoxelsTool
 
             Cols = cols;
             Rows = rows;
-            Layer = layer;
-            Painted = painted;
+            Painted = paintedCount;
             Total = total;
             _key = key;
             _lastGhost = ShowGhost;
-            _lastSig = sig;
+            _lastPainted = painted;
         }
     }
 }
