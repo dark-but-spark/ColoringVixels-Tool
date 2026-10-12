@@ -34,6 +34,8 @@ namespace ColoringPixelsTool
 
         private float _countdownMinutes = 45f;
 
+        private readonly CanvasPreview _preview = new CanvasPreview();
+
         private void Awake()
         {
             Instance = this;
@@ -73,6 +75,8 @@ namespace ColoringPixelsTool
             if (Plugin.KeyToggle != null && Input.GetKeyDown(Plugin.KeyToggle.Value)) Toggle();
 
             _showT = Mathf.MoveTowards(_showT, _visible ? 1f : 0f, Time.unscaledDeltaTime * 9f);
+
+            if (_showT > 0.001f) _preview.Refresh(Time.unscaledDeltaTime);
 
             // 输入闸门：鼠标压面板时屏蔽游戏点击 / 滚轮（Patches 读 InputGate）
             bool over = _visible && _showT > 0.4f && _window.Contains(GuiMouse());
@@ -130,6 +134,7 @@ namespace ColoringPixelsTool
             y += 50f;
 
             DrawLevelSection(w, ref y, innerW);
+            DrawPreviewSection(w, ref y, innerW);
             DrawAutoSection(w, ref y, innerW);
             DrawSchedulerSection(w, ref y, innerW);
             DrawUnlockSection(w, ref y, innerW);
@@ -177,6 +182,35 @@ namespace ColoringPixelsTool
             y += 16f;
             Ui.Text(new Rect(w.x + Pad, y, innerW, 16f), (prog * 100f).ToString("0.0") + "%", Ui.MutedSmall);
             y += 24f;
+        }
+
+        private void DrawPreviewSection(Rect w, ref float y, float innerW)
+        {
+            Ui.Section(new Rect(w.x + Pad, y, innerW, 16f), "预览（当前层）");
+            y += 22f;
+
+            Texture2D tex = _preview.Texture;
+            if (tex == null)
+            {
+                Ui.Text(new Rect(w.x + Pad, y, innerW, 18f), "进入关卡后这里显示当前层的缩略图", Ui.MutedStyle);
+                y += 24f;
+                return;
+            }
+
+            float maxH = 140f;
+            float ar = (float)_preview.Rows / Mathf.Max(1, _preview.Cols);
+            float pw = innerW;
+            float ph = pw * ar;
+            if (ph > maxH) { ph = maxH; pw = ph / Mathf.Max(0.0001f, ar); }
+
+            var box = new Rect(w.x + Pad + (innerW - pw) * 0.5f, y, pw, ph);
+            Ui.Round(box, 6f, Ui.Track);
+            GUI.DrawTexture(box, tex, ScaleMode.ScaleToFit, true);
+            y += ph + 8f;
+
+            _preview.ShowGhost = Ui.ToggleRow(new Rect(w.x + Pad, y, innerW, 40f),
+                _preview.ShowGhost, "显示未涂底稿", "把还没涂的格子用暗色目标色示意");
+            y += 44f;
         }
 
         private void DrawAutoSection(Rect w, ref float y, float innerW)

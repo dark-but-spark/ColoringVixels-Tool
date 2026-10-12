@@ -193,6 +193,22 @@ namespace ColoringPixelsTool
             return cols == null ? 0 : cols.Count;
         }
 
+        /// <summary>颜色编号对应的真彩（越界或读不到返回透明）。</summary>
+        public static Color ColourOf(Builder b, int colourId)
+        {
+            CrossLevelStorage st = St;
+            if (st == null || colourId < 0) return Color.clear;
+            List<LevelVersionData> versioned = st.levelData.versionedData;
+            if (versioned == null || versioned.Count == 0) return Color.clear;
+            int v = st.levelSaveData != null ? st.levelSaveData.levelVersion : 0;
+            if (v < 0 || v >= versioned.Count) v = versioned.Count - 1;
+            List<ColourData> cols = versioned[v].colours;
+            if (cols == null || colourId >= cols.Count) return Color.clear;
+            ColourData c = cols[colourId];
+            float a = c.a <= 0f ? 1f : c.a;
+            return new Color(c.r, c.g, c.b, a);
+        }
+
         public static void SelectLayer(Builder b, int layer)
         {
             if (b == null || layer < 0) return;
