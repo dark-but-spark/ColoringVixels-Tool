@@ -171,6 +171,7 @@ namespace ColoringPixelsTool
 
             gameObject.AddComponent<AutoScheduler>();
             gameObject.AddComponent<CheatPanel>();
+            gameObject.AddComponent<ColorHighlighter>();
 
             try { ManualTracker.Ensure(transform); }
             catch (System.Exception e) { Log.Warn("初始化人工涂色统计失败：" + e.Message); }
@@ -217,6 +218,13 @@ namespace ColoringPixelsTool
             {
                 var b = GameApi.B;
                 if (GameApi.InLevel(b)) GameApi.SaveNow(b);
+            }
+
+            if (Input.GetKeyDown(KeyHighlight.Value))
+            {
+                // 关闭 → 闪烁 → 持续 → 关闭
+                int m = HighlightMode.Value;
+                HighlightMode.Value = m == 0 ? 2 : (m == 2 ? 1 : 0);
             }
         }
 
