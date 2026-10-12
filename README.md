@@ -8,7 +8,7 @@
 
 [![Release](https://img.shields.io/github/v/release/dark-but-spark/ColoringVixels-Tool?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=5682ff)](https://github.com/dark-but-spark/ColoringVixels-Tool/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20x86%20%2F%20x64-0078d4.svg)](#系统要求)
+[![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078d4.svg)](#系统要求)
 [![Build](https://img.shields.io/github/actions/workflow/status/dark-but-spark/ColoringVixels-Tool/build.yml?label=build)](https://github.com/dark-but-spark/ColoringVixels-Tool/actions)
 
 </div>
@@ -17,7 +17,7 @@
 
 ## 简介
 
-支持的游戏：《Coloring Voxels》（Steam AppID **897330**，BepInEx 插件 + 游戏内面板）。
+支持的游戏：《Coloring Voxels》（Steam AppID **3634590**，BepInEx 插件 + 游戏内面板）。
 
 工具由两部分组成：
 
@@ -26,7 +26,7 @@
 | **安装器** `ColoringVoxelsTool-Setup.exe` | 单文件、免安装、可视化。自动检测游戏目录 → 部署文件 → 启动游戏，并支持检查更新。 |
 | **插件** `ColoringVoxelsTool.dll` | 游戏内面板：分「自动完成」「人工辅助」两大模块，提供涂色、拟人涂色、定时连图、内容解锁、悬浮 HUD 等能力。 |
 
-插件基于 **BepInEx 5（x86）** 与 **Harmony** 运行，不改动游戏本体文件（除注入所需的 `winhttp.dll` / `BepInEx/`）。
+插件基于 **BepInEx 5（x64）** 与 **Harmony** 运行，不改动游戏本体文件（除注入所需的 `winhttp.dll` / `BepInEx/`）。
 
 ## 特性
 
@@ -52,8 +52,8 @@
 
 ### 系统要求
 
-- Windows 10 / 11（x64 或 x86 系统均可）
-- 已安装 Steam 版的《Coloring Voxels》，且需 **32 位版本**：本插件不支持 64 位主程序
+- Windows 10 / 11（x64）
+- 已安装 Steam 版的《Coloring Voxels》（64 位主程序）
 - 无需安装 .NET 运行时（插件随游戏自带的 Mono 运行；安装器使用系统自带的 .NET Framework）
 
 ### 一键安装
@@ -205,7 +205,7 @@ ColoringVoxelsTool-Setup.exe [选项]
 
 - 请选择包含游戏主程序 `ColoringVoxels.exe` 的那一层目录。
 - 或使用 `--deep` 参数进行全盘深度扫描。
-- 64 位主程序不受支持：本插件基于 BepInEx 5（x86），仅支持 32 位版本。
+- 32 位主程序不受支持：本插件基于 BepInEx 5（x64），仅支持 64 位版本。
 
 </details>
 
@@ -262,7 +262,7 @@ CheatTools/
 │  ├─ build-release.ps1         一键发布
 │  ├─ publish.ps1               提交 / 推送 / 打标签发布
 │  └─ make-icon.ps1             生成应用图标
-├─ vendor/bepinex-x86/          随仓库分发的 BepInEx 5 x86 运行时
+├─ vendor/bepinex-x64/          随仓库分发的 BepInEx 5 x64 运行时
 ├─ artifacts/                   已编译的插件 DLL（随仓库提交，供 CI / 无游戏环境使用）
 ├─ assets/icon.ico              安装器图标
 ├─ docs/                        使用 / 构建文档，以及开发心路历程

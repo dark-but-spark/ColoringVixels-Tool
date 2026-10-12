@@ -16,7 +16,7 @@
 
 | 游戏 | Steam AppID | 接入方式 | 主程序 |
 | --- | --- | --- | --- |
-| 《Coloring Voxels》 | 897330 | BepInEx 插件，游戏内 <kbd>F1</kbd> 面板 | `ColoringVoxels.exe`（32 位） |
+| 《Coloring Voxels》 | 3634590 | BepInEx 插件，游戏内 <kbd>F1</kbd> 面板 | `ColoringVoxels.exe`（64 位） |
 
 ---
 
@@ -62,7 +62,7 @@
 
 ### 手动安装（不使用安装器）
 
-1. 打开仓库的 `vendor/bepinex-x86/`，把其中**全部内容**复制到游戏目录。
+1. 打开仓库的 `vendor/bepinex-x64/`，把其中**全部内容**复制到游戏目录。
 2. 用 `installer/payload/doorstop_config.ini` 覆盖游戏目录下的同名文件。
 3. 把 `artifacts/ColoringVoxelsTool.dll` 复制到 `<游戏目录>\BepInEx\plugins\`。
 4. 启动游戏。
@@ -449,7 +449,7 @@
 | --- | --- |
 | 按 F1 无反应 | 是否已进入关卡；检查 `BepInEx\plugins\ColoringVoxelsTool.dll` 是否存在；查看 `BepInEx\LogOutput.log` |
 | 「涂色 / 拟人 / 自动化」点不进去 | 三页默认上锁，先在「解锁」页解锁自动绘图 |
-| 游戏启动即闪退 | 是否装错位数（插件仅支持 32 位主程序）；卸载后重装 |
+| 游戏启动即闪退 | 是否装错位数（插件仅支持 64 位主程序）；卸载后重装 |
 | 人工辅助框选后扫不到格子 | 缩放好画面后先点「识别画布与格子」自动贴合；仍不对再用「格子校准」框一个格子推算行数与步长，并微调区域四角 |
 | 点「识别画布与格子」提示画布不在视野内 | 先把画布缩小 / 拖到屏幕里，让**整张画布**完整可见再识别（插件不猜屏幕外的位置） |
 | 安装器提示权限不足 | 用管理员身份运行 |

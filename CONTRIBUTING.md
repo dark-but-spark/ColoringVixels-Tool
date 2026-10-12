@@ -13,7 +13,7 @@
 1. Fork 本仓库并从 `main` 拉出特性分支，例如 `feat/xxx`、`fix/xxx`。
 2. 保持改动聚焦，一次 PR 只解决一件事。
 3. 遵循现有代码风格：
-   - 使用 C# 编写插件，兼容 BepInEx 5 + Unity 5.6 ~ 2019 的 Mono；
+   - 使用 C# 编写插件，兼容 BepInEx 5（x64）+ Unity 6 的 Mono；
    - 安装器源码受系统自带 `csc.exe` 限制，**必须保持 C# 5 语法**（不要用字符串插值、表达式体成员、`?.` 等）；
    - 所有 `.cs` / `.ps1` 文件保存为 **UTF-8 with BOM**（避免中文在 PowerShell 5.1 与 csc 下乱码）。
 4. 如果修改了插件源码，请重新编译并更新 `artifacts/ColoringVoxelsTool.dll`：
@@ -44,4 +44,4 @@
 
 - 请勿提交游戏本体文件（`ColoringVoxels.exe`、`ColoringVoxels_Data/` 下的任何文件）。
 - 请勿提交 `build/`、`dist/`、`installer/obj/`、`src/**/bin/`、`src/**/obj/` 等构建产物。
-- `vendor/bepinex-x86/` 与 `artifacts/ColoringVoxelsTool.dll` 需要保留，CI 依赖它们。
+- `vendor/bepinex-x64/` 与 `artifacts/ColoringVoxelsTool.dll` 需要保留，CI 依赖它们。

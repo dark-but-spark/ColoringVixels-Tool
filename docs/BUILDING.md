@@ -25,7 +25,7 @@
 | 编译安装器 | 无需 .NET SDK，使用系统自带的 `csc.exe`（.NET Framework 4.x） |
 | 《Coloring Voxels》 | **编译插件时必需**：插件引用游戏的 `Assembly-CSharp.dll` |
 
-> 插件工程目标框架为 `netstandard2.0`，运行在游戏自带的 Mono 上。
+> 插件工程目标框架为 `netstandard2.1`，运行在游戏自带的 Mono 上。
 > 安装器工程为 `net48` WinForms，但源码限制在 **C# 5** 语法，以便用系统自带 `csc.exe` 编译，因此最终用户**无需安装 .NET 运行时**。
 
 ## 2. 获取源码
