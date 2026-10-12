@@ -18,7 +18,7 @@ namespace ColoringVoxelsTool
         public const string PluginName = "Coloring Voxels Tool";
 
         /// <summary>插件版本。发版时与仓库根目录的 VERSION 文件一起更新。</summary>
-        public const string Version = "3.0.6";
+        public const string Version = "4.0.0";
 
         internal static Plugin Instance;
         internal static Harmony HarmonyInstance;
