@@ -16,7 +16,7 @@
 
 | 游戏 | Steam AppID | 接入方式 | 主程序 |
 | --- | --- | --- | --- |
-| 《Coloring Pixels》 | 897330 | BepInEx 插件，游戏内 <kbd>F1</kbd> 面板 | `ColoringPixels.exe`（32 位） |
+| 《Coloring Voxels》 | 897330 | BepInEx 插件，游戏内 <kbd>F1</kbd> 面板 | `ColoringVoxels.exe`（32 位） |
 
 ---
 
@@ -25,21 +25,21 @@
 ### 图形界面安装
 
 1. 完全退出要安装的游戏。
-2. 运行 `ColoringPixelsTool-Setup-vX.Y.Z.exe`。
-3. 安装器会自动检测目录；若检测失败可点「浏览」手动选择**包含 `ColoringPixels.exe`** 的那一层目录。
+2. 运行 `ColoringVoxelsTool-Setup-vX.Y.Z.exe`。
+3. 安装器会自动检测目录；若检测失败可点「浏览」手动选择**包含 `ColoringVoxels.exe`** 的那一层目录。
 4. 点击「一键安装」，等待进度条完成。
 5. 安装完成后游戏会自动启动（可在「安装选项」里关闭）。
 
-落地文件：`winhttp.dll`、`BepInEx\`（含 `plugins\ColoringPixelsTool.dll`）。
+落地文件：`winhttp.dll`、`BepInEx\`（含 `plugins\ColoringVoxelsTool.dll`）。
 
 ### 静默安装（脚本化）
 
 ```powershell
 # 静默安装到指定目录，不启动游戏
-.\ColoringPixelsTool-Setup.exe --silent --dir="C:\Program Files (x86)\Steam\steamapps\common\Coloring Pixels" --no-launch
+.\ColoringVoxelsTool-Setup.exe --silent --dir="C:\Program Files (x86)\Steam\steamapps\common\Coloring Voxels" --no-launch
 
 # 只检测游戏目录
-.\ColoringPixelsTool-Setup.exe --detect-only
+.\ColoringVoxelsTool-Setup.exe --detect-only
 ```
 
 退出码：`0` 成功，`1` 失败，`2` 目录无效，`3` 游戏正在运行。
@@ -54,24 +54,24 @@
 命令行卸载：
 
 ```powershell
-.\ColoringPixelsTool-Setup.exe --uninstall --remove-bepinex
+.\ColoringVoxelsTool-Setup.exe --uninstall --remove-bepinex
 ```
 
 注意：卸载会移除工具文件（含等级 / 预设所在的 `BepInEx\config`），但**不会**触碰
-`%APPDATA%\ColoringPixelsTool` 里的等级与经验存档。
+`%APPDATA%\ColoringVoxelsTool` 里的等级与经验存档。
 
 ### 手动安装（不使用安装器）
 
 1. 打开仓库的 `vendor/bepinex-x86/`，把其中**全部内容**复制到游戏目录。
 2. 用 `installer/payload/doorstop_config.ini` 覆盖游戏目录下的同名文件。
-3. 把 `artifacts/ColoringPixelsTool.dll` 复制到 `<游戏目录>\BepInEx\plugins\`。
+3. 把 `artifacts/ColoringVoxelsTool.dll` 复制到 `<游戏目录>\BepInEx\plugins\`。
 4. 启动游戏。
 
 ---
 
 ## 3. 快捷键
 
-### 3.1 插件（《Coloring Pixels》）
+### 3.1 插件（《Coloring Voxels》）
 
 | 按键 | 功能 | 备注 |
 | --- | --- | --- |
@@ -129,7 +129,7 @@
 | --- | --- |
 | 应用推荐预设 | 按预设文件里的值一键套用（应用前自动记一份快照） |
 | 恢复游戏默认 | 回到游戏出厂默认值（照抄游戏 `CrossLevelStorage.Start()` 里的初始值） |
-| 撤销上次改动 | 回到「应用预设 / 恢复默认」之前的样子；快照会落盘到 `%APPDATA%\ColoringPixelsTool\preset-snapshot.txt`，重启后依然能撤销 |
+| 撤销上次改动 | 回到「应用预设 / 恢复默认」之前的样子；快照会落盘到 `%APPDATA%\ColoringVoxelsTool\preset-snapshot.txt`，重启后依然能撤销 |
 | 把当前设置存为预设 | 把当前全部设置写回预设文件（旧文件自动备份为 `.bak`） |
 | 重新载入预设文件 / 写入游戏存档 | 从磁盘重读预设；把当前设置立刻落盘到游戏存档 |
 
@@ -317,7 +317,7 @@
 
 | 功能 | 说明 |
 | --- | --- |
-| 插件日志 | 所有日志同时写进 `%APPDATA%\ColoringPixelsTool\logs\plugin-yyyyMMdd.log`（按天一个，自动保留最近 7 份）。「调试」页顶部有「插件日志」区：目录、打开日志目录、清理历史日志；「设置」页也有「打开日志文件夹」与「导出面板截图」（截图存进同一个日志目录，反馈问题时把截图和日志一起发最快） |
+| 插件日志 | 所有日志同时写进 `%APPDATA%\ColoringVoxelsTool\logs\plugin-yyyyMMdd.log`（按天一个，自动保留最近 7 份）。「调试」页顶部有「插件日志」区：目录、打开日志目录、清理历史日志；「设置」页也有「打开日志文件夹」与「导出面板截图」（截图存进同一个日志目录，反馈问题时把截图和日志一起发最快） |
 | 新手指引 | 首次启动自动弹出 5 页指引，可在设置里重新打开 |
 | 功能总览 | **第一次**用这个工具时（`UserProfile.LastVersion` 为空）弹一次「全部功能」清单，幽默风、讲清每个模块；装过 / 用过的老用户不再弹。设置页「查看完整功能清单」可随时重看 |
 | 爱心二次确认 | 游戏里点爱心（清空全部进度）时，插件再拦截一次并给出更安全的替代做法，确认键 2 秒冷静期 |
@@ -334,7 +334,7 @@
 首次运行游戏后生成于：
 
 ```
-<游戏目录>\BepInEx\config\coloringpixels.cheatsuite.cfg
+<游戏目录>\BepInEx\config\coloringvoxels.cheatsuite.cfg
 ```
 
 | 分组 | 键 | 默认 | 说明 |
@@ -382,7 +382,7 @@
 | 8-推荐预设 | 按钮父级上移 | 0 | 0–4 |
 | 8-推荐预设 | 按钮位置 | 0 | 0 自动 / 1 底部居中 / 2 居中 / 3 顶部居中 |
 | 8-推荐预设 | 按钮偏移X / 偏移Y | 0 / 0 | 在自动位置基础上微调 |
-| 8-推荐预设 | 预设文件 | ColoringPixelsTool.Preset.txt | 放在 `BepInEx/config`，键 = 值 |
+| 8-推荐预设 | 预设文件 | ColoringVoxelsTool.Preset.txt | 放在 `BepInEx/config`，键 = 值 |
 | 9-快捷键 | 人工辅助-开始/暂停/继续 | F7 | 开始 / 暂停 / 继续整屏扫描 |
 | 9-快捷键 | 人工辅助-框选区域 | F8 | 拖拽框选扫描区域 |
 | 9-快捷键 | 人工辅助-停止 | F9 | 立即停止 |
@@ -407,24 +407,24 @@
 
 | 内容 | 位置 |
 | --- | --- |
-| 人工辅助的区域与参数 | `BepInEx\config\ColoringPixelsTool.Assist\` |
-| 单图用时记录 | `BepInEx\config\ColoringPixelsTool.Times.txt` |
+| 人工辅助的区域与参数 | `BepInEx\config\ColoringVoxelsTool.Assist\` |
+| 单图用时记录 | `BepInEx\config\ColoringVoxelsTool.Times.txt` |
 
 ### 5.3 等级与用户资料存档
 
 等级、经验值与各项统计存在**漫游目录**，不放在游戏目录里：
 
 ```
-%APPDATA%\ColoringPixelsTool\ColoringPixelsTool.Profile.json
+%APPDATA%\ColoringVoxelsTool\ColoringVoxelsTool.Profile.json
 ```
 
 之所以不放游戏目录，是因为 `BepInEx\config` 会随「覆盖安装 / 卸载插件 / 验证游戏文件完整性 /
 重装游戏」一起消失，放在那儿就会出现「更新一次版本，等级从头再来」。
 
-- 升级到本版本后，会自动把旧位置（`BepInEx\config\ColoringPixelsTool.Profile.json`）的进度迁移过来，
+- 升级到本版本后，会自动把旧位置（`BepInEx\config\ColoringVoxelsTool.Profile.json`）的进度迁移过来，
   并继续在旧位置留一份镜像副本作为备份。
-- 同一目录下还有 `ColoringPixelsTool.Profile.json.bak`（上一份存档）与
-  `ColoringPixelsTool.Profile.json.corrupt-*`（读出来怀疑损坏的存档，不会被直接删掉）。
+- 同一目录下还有 `ColoringVoxelsTool.Profile.json.bak`（上一份存档）与
+  `ColoringVoxelsTool.Profile.json.corrupt-*`（读出来怀疑损坏的存档，不会被直接删掉）。
 - 只要经验值还在，等级就能反推还原：存档里等级字段丢了也不会掉级。
 - V2.2.9 起等级拆成**两条互不相干的经验线**，存档里分别记为 `levelManual` / `xpManual`（人工辅助）与
   `levelAuto` / `xpAuto`（自动绘图），另外还记 `assistPixels`、`imagesCompletedManual` /
@@ -447,22 +447,22 @@
 
 | 现象 | 排查 |
 | --- | --- |
-| 按 F1 无反应 | 是否已进入关卡；检查 `BepInEx\plugins\ColoringPixelsTool.dll` 是否存在；查看 `BepInEx\LogOutput.log` |
+| 按 F1 无反应 | 是否已进入关卡；检查 `BepInEx\plugins\ColoringVoxelsTool.dll` 是否存在；查看 `BepInEx\LogOutput.log` |
 | 「涂色 / 拟人 / 自动化」点不进去 | 三页默认上锁，先在「解锁」页解锁自动绘图 |
 | 游戏启动即闪退 | 是否装错位数（插件仅支持 32 位主程序）；卸载后重装 |
 | 人工辅助框选后扫不到格子 | 缩放好画面后先点「识别画布与格子」自动贴合；仍不对再用「格子校准」框一个格子推算行数与步长，并微调区域四角 |
 | 点「识别画布与格子」提示画布不在视野内 | 先把画布缩小 / 拖到屏幕里，让**整张画布**完整可见再识别（插件不猜屏幕外的位置） |
 | 安装器提示权限不足 | 用管理员身份运行 |
 | 安装器提示游戏正在运行 | 关闭游戏后重试，或允许安装器结束进程 |
-| 面板参数不生效 | 检查 `coloringpixels.cheatsuite.cfg` 是否被锁为只读 |
+| 面板参数不生效 | 检查 `coloringvoxels.cheatsuite.cfg` 是否被锁为只读 |
 | 存档异常 | 用「调试」页前请先保存备份；必要时用游戏内备份还原 |
 
 日志位置：
 
-- 插件日志（**排查问题优先看这份**）：`%APPDATA%\ColoringPixelsTool\logs\plugin-yyyyMMdd.log`
+- 插件日志（**排查问题优先看这份**）：`%APPDATA%\ColoringVoxelsTool\logs\plugin-yyyyMMdd.log`
   按天一个文件、带时间戳与级别，自动只留最近 7 份；面板「调试」页顶部有「打开日志目录 / 清理历史日志」，
   「设置」页还有「导出面板截图」（PNG 也存进这个目录，一张截图 + 一份日志基本就能定位问题）。
 - 插件 BepInEx 日志：`<游戏目录>\BepInEx\LogOutput.log`（BepInEx 自己的输出，内容与上面基本重合）
-- 安装器日志：`%TEMP%\ColoringPixelsTool-Setup.log`
-- 用户数据（等级 / 统计 / 预设快照 / 日志）目录：`%APPDATA%\ColoringPixelsTool\`
+- 安装器日志：`%TEMP%\ColoringVoxelsTool-Setup.log`
+- 用户数据（等级 / 统计 / 预设快照 / 日志）目录：`%APPDATA%\ColoringVoxelsTool\`
   安装器「安装选项」卡片上直接写了这个路径，旁边有「打开」按钮可以直接跳到那里。

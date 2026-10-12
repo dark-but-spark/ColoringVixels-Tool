@@ -1,11 +1,11 @@
 ﻿#Requires -Version 5.1
 <#
-    编译单文件安装器 ColoringPixelsTool-Setup.exe。
+    编译单文件安装器 ColoringVoxelsTool-Setup.exe。
 
     优先使用系统自带的 .NET Framework csc.exe（无需安装 .NET SDK）；
     如果找不到 csc，则回退到 dotnet build。
 
-    产物：dist\ColoringPixelsTool-Setup-v<版本>.exe
+    产物：dist\ColoringVoxelsTool-Setup-v<版本>.exe
 #>
 [CmdletBinding()]
 param(
@@ -47,7 +47,7 @@ function Get-RepoUrl {
         $m = [regex]::Match((Get-Content -LiteralPath $props -Raw), '<RepositoryUrl>\s*([^<]+?)\s*</RepositoryUrl>')
         if ($m.Success) { return $m.Groups[1].Value }
     }
-    return 'https://github.com/zlwzk/ColoringPixels-Tool'
+    return 'https://github.com/dark-but-spark/ColoringVixels-Tool'
 }
 
 function New-FourPartVersion {
@@ -102,10 +102,10 @@ $assemblyInfo = @"
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("Coloring Pixels Tool Installer")]
-[assembly: AssemblyDescription("Coloring Pixels 作弊套件的一键安装器")]
-[assembly: AssemblyProduct("Coloring Pixels Tool")]
-[assembly: AssemblyCompany("Coloring Pixels Tool contributors")]
+[assembly: AssemblyTitle("Coloring Voxels Tool Installer")]
+[assembly: AssemblyDescription("Coloring Voxels 作弊套件的一键安装器")]
+[assembly: AssemblyProduct("Coloring Voxels Tool")]
+[assembly: AssemblyCompany("Coloring Voxels Tool contributors")]
 [assembly: AssemblyCopyright("MIT License")]
 [assembly: AssemblyConfiguration("Release")]
 [assembly: AssemblyVersion("$fourPart")]
@@ -127,7 +127,7 @@ $sources += $genFile
 if ($sources.Count -le 1) { Fail '没有找到 installer\*.cs 源文件' }
 
 if (-not (Test-Path -LiteralPath $Output)) { New-Item -ItemType Directory -Path $Output -Force | Out-Null }
-$outExe = Join-Path $Output ("ColoringPixelsTool-Setup-v{0}.exe" -f $version)
+$outExe = Join-Path $Output ("ColoringVoxelsTool-Setup-v{0}.exe" -f $version)
 if (Test-Path -LiteralPath $outExe) { Remove-Item -LiteralPath $outExe -Force }
 
 # ---------------------------------------------------------------- 5. 编译
@@ -161,7 +161,7 @@ function Compile-WithCsc {
 }
 
 function Compile-WithDotnet {
-    $csproj = Join-Path $repoRoot 'installer\ColoringPixelsTool.Installer.csproj'
+    $csproj = Join-Path $repoRoot 'installer\ColoringVoxelsTool.Installer.csproj'
     if (-not (Test-Path -LiteralPath $csproj)) { Fail '找不到 installer 工程文件，且没有可用的 csc.exe' }
 
     $work = Join-Path $repoRoot 'build\dotnet-installer'
@@ -170,7 +170,7 @@ function Compile-WithDotnet {
     & dotnet build $csproj -c Release -o $work -p:Version=$version -p:PayloadZip=$PayloadZip --nologo
     if ($LASTEXITCODE -ne 0) { return $LASTEXITCODE }
 
-    $built = Join-Path $work 'ColoringPixelsTool-Setup.exe'
+    $built = Join-Path $work 'ColoringVoxelsTool-Setup.exe'
     if (-not (Test-Path -LiteralPath $built)) { Fail "dotnet build 未生成 $built" }
     Copy-Item -LiteralPath $built -Destination $outExe -Force
     return 0

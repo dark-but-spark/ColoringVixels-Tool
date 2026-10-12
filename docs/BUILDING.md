@@ -21,9 +21,9 @@
 | --- | --- |
 | Windows 10 / 11 | 脚本使用 PowerShell 5.1 与 Windows 自带工具 |
 | PowerShell 5.1 | 系统自带，无需额外安装 |
-| 编译插件 | **必须**满足其一：.NET SDK / Visual Studio / Build Tools；或直接使用仓库内的 `artifacts\ColoringPixelsTool.dll` |
+| 编译插件 | **必须**满足其一：.NET SDK / Visual Studio / Build Tools；或直接使用仓库内的 `artifacts\ColoringVoxelsTool.dll` |
 | 编译安装器 | 无需 .NET SDK，使用系统自带的 `csc.exe`（.NET Framework 4.x） |
-| 《Coloring Pixels》 | **编译插件时必需**：插件引用游戏的 `Assembly-CSharp.dll` |
+| 《Coloring Voxels》 | **编译插件时必需**：插件引用游戏的 `Assembly-CSharp.dll` |
 
 > 插件工程目标框架为 `netstandard2.0`，运行在游戏自带的 Mono 上。
 > 安装器工程为 `net48` WinForms，但源码限制在 **C# 5** 语法，以便用系统自带 `csc.exe` 编译，因此最终用户**无需安装 .NET 运行时**。
@@ -31,8 +31,8 @@
 ## 2. 获取源码
 
 ```powershell
-git clone https://github.com/zlwzk/ColoringPixels-Tool.git
-cd ColoringPixelsTool
+git clone https://github.com/dark-but-spark/ColoringVixels-Tool.git
+cd ColoringVoxelsTool
 ```
 
 仓库结构见 [README · 目录结构](../README.md#目录结构)。
@@ -58,13 +58,13 @@ cd ColoringPixelsTool
 
 - CI 把它作为 GitHub Release 正文（见 `release.yml` 的 `body_path`）；
 - [`scripts/build-changelog.ps1`](../scripts/build-changelog.ps1) 把它转成两个源码文件：
-  - `src\ColoringPixelsTool\Changelog.cs` —— 游戏内 <kbd>F1</kbd> 面板的「更新公告」；
+  - `src\ColoringVoxelsTool\Changelog.cs` —— 游戏内 <kbd>F1</kbd> 面板的「更新公告」；
   - `installer\ReleaseNotes.cs` —— 安装器安装完成后的弹窗公告。
 
 `FEATURES.md`：
 
 - 同一个脚本把它转成另外两个源码文件：
-  - `src\ColoringPixelsTool\FeatureGuide.cs` —— 游戏内面板的「功能总览」（设置页可随时重开）；
+  - `src\ColoringVoxelsTool\FeatureGuide.cs` —— 游戏内面板的「功能总览」（设置页可随时重开）；
   - `installer\FeatureGuide.cs` —— 安装器**首次安装**时弹出的功能总览。
 
 「第一次」的判定：安装器在安装前调 `PayloadInstaller.IsInstalled()`，为 `false` 就是新玩家；
@@ -88,18 +88,18 @@ cd ColoringPixelsTool
 .\scripts\build-mod.ps1
 
 # 指定游戏目录
-.\scripts\build-mod.ps1 -GameDir "C:\Program Files (x86)\Steam\steamapps\common\Coloring Pixels"
+.\scripts\build-mod.ps1 -GameDir "C:\Program Files (x86)\Steam\steamapps\common\Coloring Voxels"
 
 # 强制使用某个后端
 .\scripts\build-mod.ps1 -Backend csc      # csc | msbuild | dotnet | auto
 ```
 
 脚本会按 `dotnet` → `MSBuild` → `Roslyn csc` 的顺序自动选择可用后端，产物输出到
-`artifacts\ColoringPixelsTool.dll`。
+`artifacts\ColoringVoxelsTool.dll`。
 
 > **为什么仓库里要提交一份编译好的 DLL？**
 > 编译插件必须引用游戏自身的 `Assembly-CSharp.dll`，而 CI 与大多数协作者都没有游戏程序集。
-> 因此仓库保留 `artifacts\ColoringPixelsTool.dll`，让 `build-release.ps1 -SkipMod` 与 CI 无需游戏即可出包。
+> 因此仓库保留 `artifacts\ColoringVoxelsTool.dll`，让 `build-release.ps1 -SkipMod` 与 CI 无需游戏即可出包。
 
 ## 5. 一键构建发布包
 
@@ -126,7 +126,7 @@ cd ColoringPixelsTool
 # ② 仅组装部署包（BepInEx + 插件），产出 build\payload.zip
 .\scripts\build-payload.ps1
 
-# ③ 仅编译安装器（内嵌 payload.zip），产出 dist\ColoringPixelsTool-Setup-v<版本>.exe
+# ③ 仅编译安装器（内嵌 payload.zip），产出 dist\ColoringVoxelsTool-Setup-v<版本>.exe
 .\scripts\build-installer.ps1
 
 # ④ 仅生成图标（一般无需重复执行）
@@ -148,7 +148,7 @@ cd ColoringPixelsTool
 ```
 build\payload\                 部署包展开内容（winhttp.dll / doorstop_config.ini / BepInEx\...）
 build\payload.zip              压缩后的部署包（被安装器内嵌）
-dist\ColoringPixelsTool-Setup-v<版本>.exe   最终单文件安装器
+dist\ColoringVoxelsTool-Setup-v<版本>.exe   最终单文件安装器
 dist\SHA256SUMS.txt            安装器与部署包的 SHA256 校验和
 ```
 
@@ -163,14 +163,14 @@ dist\SHA256SUMS.txt            安装器与部署包的 SHA256 校验和
 
 ```powershell
 # 提交 + 推送 + 自动升版本 + 打标签 + 等 CI + 把安装器同步到桌面
-.\scripts\publish.ps1 -Message "feat: ..." -GameDir "C:\Program Files (x86)\Steam\steamapps\common\Coloring Pixels"
+.\scripts\publish.ps1 -Message "feat: ..." -GameDir "C:\Program Files (x86)\Steam\steamapps\common\Coloring Voxels"
 
 # 只提交推送，不发版
 .\scripts\publish.ps1 -Message "docs: ..." -NoRelease
 ```
 
 脚本会自动同步 `VERSION` 与 `Plugin.Version`、重编译插件（保证面板版本与安装包一致）、提交推送、
-打 `v*` 标签触发 CI，最后把安装器下载到桌面固定名 `ColoringPixelsTool-Setup.exe`。
+打 `v*` 标签触发 CI，最后把安装器下载到桌面固定名 `ColoringVoxelsTool-Setup.exe`。
 当前版本已发过时会自动 +1 patch（也可用 `-Bump` / `-Version` 指定），所以发版前请先把
 `CHANGELOG.md` 与 `RELEASE_NOTES.md`（CI 用它作为 Release 正文）写好。
 
@@ -180,11 +180,11 @@ dist\SHA256SUMS.txt            安装器与部署包的 SHA256 校验和
 ## 9. 自定义（仓库信息 / 图标）
 
 - **仓库地址**：`Directory.Build.props` 的 `RepositoryUrl`、`installer/AppInfo.cs` 的 `DefaultRepositoryUrl`、
-  `README.md` 徽章与 `CHANGELOG.md` 的版本链接中均已写入本仓库地址 `zlwzk/ColoringPixels-Tool`；
+  `README.md` 徽章与 `CHANGELOG.md` 的版本链接中均已写入本仓库地址 `dark-but-spark/ColoringVixels-Tool`；
   若 fork 本项目，请把这几处一并改成你自己的仓库路径。
 - **图标**：编辑 `scripts/make-icon.ps1` 的配色 / 图形后重新生成 `assets/icon.ico`。
 - **安装器文案 / 配色**：见 `installer/Theme.cs` 与 `installer/MainForm.cs`（**保持 C# 5 语法**）。
-- **插件名称 / 版本 / 快捷键**：见 `src/ColoringPixelsTool/Plugin.cs`。
+- **插件名称 / 版本 / 快捷键**：见 `src/ColoringVoxelsTool/Plugin.cs`。
 
 ## 10. 构建问题排查
 

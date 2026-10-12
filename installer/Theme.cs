@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>
     /// 安装器的配色与控件工厂。

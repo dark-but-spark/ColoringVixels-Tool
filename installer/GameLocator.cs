@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>一处「疑似游戏目录」的检测结果。</summary>
     internal sealed class GameCandidate
@@ -51,7 +51,7 @@ namespace ColoringPixelsTool.Installer
         }
     }
 
-    /// <summary>游戏安装目录的探测与校验（本工具只支持《Coloring Pixels》一款）。</summary>
+    /// <summary>游戏安装目录的探测与校验（本工具只支持《Coloring Voxels》一款）。</summary>
     internal static class GameLocator
     {
         // ------------------------------------------------------------ 校验

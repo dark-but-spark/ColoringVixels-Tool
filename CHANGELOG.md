@@ -36,7 +36,7 @@
 - **首次使用的「功能总览」公告**：新玩家第一次接触工具时，看到的是完整功能清单而不是
   「这版改了什么」；老用户升级仍然只看当版更新公告。
   - 新增仓库根目录 `FEATURES.md`（幽默风的全部功能说明），由 `build-changelog.ps1` 生成
-    `src\ColoringPixelsTool\FeatureGuide.cs`（游戏内面板）与 `installer\FeatureGuide.cs`（安装器弹窗）。
+    `src\ColoringVoxelsTool\FeatureGuide.cs`（游戏内面板）与 `installer\FeatureGuide.cs`（安装器弹窗）。
   - 安装器：`MainForm.OnInstallClick` 在安装**前**记下 `PayloadInstaller.IsInstalled()`，
     为 `false`（新玩家）时 `ChangelogDialog(firstInstall: true)` 展示功能总览。
   - 插件：`Plugin.Awake` 用 `string.IsNullOrEmpty(UserProfile.LastVersion)` 判定首次使用，
@@ -193,7 +193,7 @@
   以及机器名，提交前统一替换为占位符（issue 是公开的，不该替用户把这些发出去）；
   另加一条正则兜底，任何盘符下的 `\Users\<名字>\` 都会被盖掉。
 - **界面上不再出现 Windows 用户名**：`UserProfile.UserDataDirectoryDisplay()` 把面板里的
-  等级存档目录显示成 `%APPDATA%\ColoringPixelsTool\`；安装器日志路径显示成
+  等级存档目录显示成 `%APPDATA%\ColoringVoxelsTool\`；安装器日志路径显示成
   `%USERPROFILE%\...`（`installer\Log.PrettyPath`）。
 - **仓库内不再有开发机绝对路径**：`tools\dump-types.ps1`、`scripts\publish.ps1` 改为自动
   探测游戏目录（显式参数 → `CPT_GAME_DIR` → 仓库上级 → 各盘 Steam 默认位置），
@@ -217,8 +217,8 @@
 ### 修复
 
 - **等级 / 经验值不再随版本更新重置**（`UserProfile.cs`）：
-  - 存档从游戏目录 `BepInEx\config\ColoringPixelsTool.Profile.json` 移到漫游目录
-    `%APPDATA%\ColoringPixelsTool\ColoringPixelsTool.Profile.json`。
+  - 存档从游戏目录 `BepInEx\config\ColoringVoxelsTool.Profile.json` 移到漫游目录
+    `%APPDATA%\ColoringVoxelsTool\ColoringVoxelsTool.Profile.json`。
     前者会随「覆盖安装 / 卸载插件 / 卸载时移除 BepInEx / 验证游戏文件完整性 / 重装游戏」一并消失，
     这正是「更新一次版本，等级从头再来」的直接原因。
   - `Save()` 改为**原子写入**（先写 `.tmp` 再替换）：原先的 `File.WriteAllText` 会先截断原文件，
@@ -242,7 +242,7 @@
   插件 `Changelog.cs`、安装器 `ChangelogDialog.cs` 三处手写，版本一升，后两处常被漏改
   （v2.2.2 就出现了「安装包是新的、面板公告还停在 2.2.1」）。
   现在 `RELEASE_NOTES.md` 是唯一来源，新增 `scripts/build-changelog.ps1` 生成
-  `src/ColoringPixelsTool/Changelog.cs` 与 `installer/ReleaseNotes.cs`；
+  `src/ColoringVoxelsTool/Changelog.cs` 与 `installer/ReleaseNotes.cs`；
   `publish.ps1` 与 `build-release.ps1`（CI）都会在编译前自动执行，发版时若公告未写到新版本号则直接报错。
 - 公告文本由 Markdown 转为纯文本时，统一处理标题、加粗、列表、表格与 `<kbd>` 按键标记，
   面板与弹窗中不再出现 Markdown 符号。
@@ -267,7 +267,7 @@
   F7（开始）/ F9（停止）不符。现在这些文案统一改为读取「设置 → 快捷键」的实际配置，改键后即时更新
   （涉及「扫描」页按钮、「区域」页说明与新手指引第 3 页）。
 - 覆盖层开关未绑定按键时，不再显示「未设置」这种别扭文案，改为提示可在设置里绑定。
-- 修正 `README.md` 徽章的仓库地址（`zlwzk/ColoringPixelsTool` → `zlwzk/ColoringPixels-Tool`），
+- 修正 `README.md` 徽章的仓库地址（`zlwzk/ColoringVoxelsTool` → `dark-but-spark/ColoringVixels-Tool`），
   此前 Release / Build 徽章指向一个不存在的仓库。
 
 ### 文档
@@ -287,7 +287,7 @@
   - 从「设置 → 自动化与安全」开启同样会走这道确认；关掉开关即可重新上锁
 - **新增 [开发心路历程](docs/CHRONICLE.md)**：按时间线记录每个版本的设计动机与取舍，README 底部提供入口
 - **全端 UI 美化与动效升级**：把 magicui / Aceternity 的设计语言移植到 GDI+ / IMGUI，零第三方依赖
-  - 插件端（Coloring Pixels 游戏内 F1 面板）：
+  - 插件端（Coloring Voxels 游戏内 F1 面板）：
     - 新增 `UiFx.cs` 动效库，含 Shimmer、Glare、ShineBorder、Spotlight、Aurora Background、Dot Grid、Grain、Border Beam、Pulse、CountText、Confetti 彩纸、缓动等
     - 标题栏 Spotlight 跟随鼠标，窗口背景加 Aurora + 点阵 + 噪点
     - 图标带 Shimmer 与光晕，Tab 改为滑动指示块 + ShineBorder
@@ -318,7 +318,7 @@
 
 - **新增第二款游戏支持：《涂色大师：像素梦想家》**
   - 安装器现在会同时识别两款游戏的目录与配置文件，互不影响：任意一款没识别到，另一款照常安装
-    - 《Coloring Pixels》：Steam AppId `897330`，校验 `ColoringPixels.exe` + `ColoringPixels_Data\Managed\Assembly-CSharp.dll`
+    - 《Coloring Voxels》：Steam AppId `897330`，校验 `ColoringVoxels.exe` + `ColoringVoxels_Data\Managed\Assembly-CSharp.dll`
     - 《涂色大师：像素梦想家》：Steam AppId `3071670`，校验 `PixelCrossStitch.exe` + `GameAssembly.dll`（IL2CPP）
   - 界面顶部新增游戏切换标签，两款游戏各自记忆目录、安装状态与版本，可分别安装 / 卸载
   - 该游戏是 IL2CPP 构建，无法注入 BepInEx 托管插件，因此改为随包分发**独立助手 `PixelAssist.exe`**
@@ -327,7 +327,7 @@
     - 参数与区域保存在 `%APPDATA%\PixelAssist`，升级安装包不会丢失
   - 命令行新增 `--game=cp|pcs` 与 `--all`（对所有检测到的游戏各安装一次）
 
-- **Coloring Pixels 面板分为「自动完成」与「人工辅助」两大模块**
+- **Coloring Voxels 面板分为「自动完成」与「人工辅助」两大模块**
   - 「自动完成」保留原有全部功能（涂色、拟人、自动化、辅助、解锁、设置、调试）
   - 「人工辅助」按设计文档实现：屏幕扫描辅助区域（四角 + 弯边模型，可逐角拖动微调）、
     扫描行数 / 速度 / 采样步长 / 行间停顿 / 蛇形 / 边缘内缩 / 启动延时 / 按住按键 /
@@ -370,7 +370,7 @@
   - 内置常用词典，也可外挂词典文件（放在 `BepInEx/config/`）随时补充，保存后热重载
   - 自动把游戏原生像素字体替换为系统中文字体，中文不再显示成方块
 - **推荐预设按钮**：在游戏设置界面注入「推荐预设」按钮，形状、颜色与游戏自带按钮保持一致
-  - 预设内容写在 `BepInEx/config/ColoringPixelsTool.Preset.txt`，键名支持存档字段名或界面控件名
+  - 预设内容写在 `BepInEx/config/ColoringVoxelsTool.Preset.txt`，键名支持存档字段名或界面控件名
   - 点击后一键把音量、灰度、季节特效等设置改为推荐值，并立即刷新界面
 - **安装器检查更新**：安装器启动时自动检查 GitHub Release
   - 发现新版本时按钮变为「更新到 vX.Y.Z」，点击即可把最新版安装器下载到桌面并直接运行
@@ -411,10 +411,10 @@
 
 ### 变更
 
-- **项目更名为 Coloring Pixels Tool**：仓库、程序集、安装器与文档统一改用新名称
-  - 插件程序集为 `ColoringPixelsTool.dll`，安装器为 `ColoringPixelsTool-Setup-v<版本>.exe`
-  - 安装 / 卸载时自动清理旧版遗留的 `ColoringPixelsCheat.dll`，避免同一 GUID 的插件被重复加载
-  - BepInEx 插件 GUID 与配置文件仍为 `coloringpixels.cheatsuite`，已有设置不会丢失
+- **项目更名为 Coloring Voxels Tool**：仓库、程序集、安装器与文档统一改用新名称
+  - 插件程序集为 `ColoringVoxelsTool.dll`，安装器为 `ColoringVoxelsTool-Setup-v<版本>.exe`
+  - 安装 / 卸载时自动清理旧版遗留的 `ColoringVoxelsCheat.dll`，避免同一 GUID 的插件被重复加载
+  - BepInEx 插件 GUID 与配置文件仍为 `coloringvoxels.cheatsuite`，已有设置不会丢失
 - **发布流程**：提交、推送、打标签发版以及把安装器同步到桌面，现在由同一条命令完成
 
 ## [1.1.0] - 2026-09-10
@@ -434,22 +434,22 @@
 
 ### 新增
 
-- **一键安装器**（`ColoringPixelsTool-Setup.exe`，单文件、免安装）
+- **一键安装器**（`ColoringVoxelsTool-Setup.exe`，单文件、免安装）
   - 自动检测游戏目录：运行中的进程 → Steam 库 → 常见位置 → 全盘深度扫描
-  - 校验是否为《Coloring Pixels》目录，并读取 PE 头判断主程序位数
+  - 校验是否为《Coloring Voxels》目录，并读取 PE 头判断主程序位数
   - 自动部署 BepInEx 5（x86）+ 作弊插件，支持覆盖 / 备份 / 幂等重装
   - 部署完成后自动启动游戏
   - 一键卸载（可选连同 BepInEx 本体一起移除、可选还原备份）
   - 无边框深色界面，支持高 DPI
   - 命令行模式：`--silent` / `--detect-only` / `--uninstall` / `--dir=` 等
-- **作弊插件**（`ColoringPixelsTool.dll`）
+- **作弊插件**（`ColoringVoxelsTool.dll`）
   - 涂色页：一键涂完本关、涂完当前颜色、清空画布、立即保存、重载本关
   - 拟人涂色引擎：按颜色逐个处理、就近分块 + 蛇形扫行、随机停顿、手速抖动、可选手滑
   - 解锁页：解锁全部 DLC、免费提示（普通 / 重提示）、显示隐藏书籍、标记书籍完成、解锁 Steam 成就
   - 显示页：可拖动悬浮 HUD（进度、剩余格子、剩余颜色明细）
   - 字段页：直接编辑 `CrossLevelStorage` 存档字段与 `ClickTest` 运行时字段
   - 全局快捷键：F1 面板、F2 一键涂完、F3 拟人涂色、F4 清空、F5 保存
-  - 配置写入 `BepInEx/config/coloringpixels.cheatsuite.cfg`
+  - 配置写入 `BepInEx/config/coloringvoxels.cheatsuite.cfg`
 
 ### 构建
 
@@ -461,15 +461,15 @@
 - 版本号单点维护：根目录 `VERSION` 被 `Directory.Build.props` 与全部构建脚本读取
 - 通过 GitHub Actions 在 `windows-latest` 上自动构建并发布 Release
 
-[2.2.5]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.2.5
-[2.2.4]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.2.4
-[2.2.3]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.2.3
-[2.2.2]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.2.2
-[2.2.1]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.2.1
-[2.2.0]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.2.0
-[2.1.0]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.1.0
-[2.0.0]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v2.0.0
-[1.3.0]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v1.3.0
-[1.2.0]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v1.2.0
-[1.1.0]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v1.1.0
-[1.0.0]: https://github.com/zlwzk/ColoringPixels-Tool/releases/tag/v1.0.0
+[2.2.5]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.2.5
+[2.2.4]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.2.4
+[2.2.3]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.2.3
+[2.2.2]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.2.2
+[2.2.1]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.2.1
+[2.2.0]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.2.0
+[2.1.0]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.1.0
+[2.0.0]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v2.0.0
+[1.3.0]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v1.3.0
+[1.2.0]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v1.2.0
+[1.1.0]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v1.1.0
+[1.0.0]: https://github.com/dark-but-spark/ColoringVixels-Tool/releases/tag/v1.0.0

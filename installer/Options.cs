@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>命令行参数。</summary>
     internal sealed class Options
@@ -89,7 +89,7 @@ namespace ColoringPixelsTool.Installer
             }
 
             if (string.IsNullOrEmpty(o.LogPath))
-                o.LogPath = Path.Combine(Path.GetTempPath(), "ColoringPixelsTool-Setup.log");
+                o.LogPath = Path.Combine(Path.GetTempPath(), "ColoringVoxelsTool-Setup.log");
 
             return o;
         }
@@ -107,7 +107,7 @@ namespace ColoringPixelsTool.Installer
             List<string> lines = new List<string>();
             lines.Add(AppInfo.ProductName + " " + AppInfo.AppVersion + " - 安装器");
             lines.Add("");
-            lines.Add("用法： ColoringPixelsTool-Setup.exe [选项]");
+            lines.Add("用法： ColoringVoxelsTool-Setup.exe [选项]");
             lines.Add("");
             lines.Add("  --dir=<路径>        指定游戏目录（跳过自动检测）");
             lines.Add("  --game=cp           指定目标游戏（本工具只有一款，纯兼容旧快捷方式）");

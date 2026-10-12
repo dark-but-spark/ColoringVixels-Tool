@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -6,7 +6,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>GitHub Release 上的最新版本信息。</summary>
     internal sealed class UpdateInfo
@@ -36,7 +36,7 @@ namespace ColoringPixelsTool.Installer
     /// </summary>
     internal static class Updater
     {
-        private const string UserAgent = "ColoringPixelsTool-Installer";
+        private const string UserAgent = "ColoringVoxelsTool-Installer";
         private const int TimeoutMs = 20000;
 
         /// <summary>自动更新失败时引导用户去夸克网盘手动下载。</summary>
@@ -159,7 +159,7 @@ namespace ColoringPixelsTool.Installer
                 info.Tag = tag;
                 info.Version = NormalizeVersion(tag);
                 info.PageUrl = location;
-                info.AssetName = "ColoringPixelsTool-Setup-" + tag + ".exe";
+                info.AssetName = "ColoringVoxelsTool-Setup-" + tag + ".exe";
                 info.AssetUrl = "https://github.com/" + RepoSlug + "/releases/download/" + tag + "/"
                                 + info.AssetName;
 

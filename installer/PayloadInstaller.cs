@@ -6,7 +6,7 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>一次安装 / 卸载的统计结果。</summary>
     internal sealed class DeployReport
@@ -200,7 +200,7 @@ namespace ColoringPixelsTool.Installer
             }
         }
 
-        /// <summary>清理旧版本遗留的插件 DLL（ColoringPixelsCheat 时期的文件名）。
+        /// <summary>清理旧版本遗留的插件 DLL（ColoringVoxelsCheat 时期的文件名）。
         /// 同一 GUID 的旧插件若还留在 plugins 目录，会和新插件一起被 BepInEx 加载并冲突。</summary>
         private static void RemoveLegacyPluginFiles(string gameDir, DeployReport report)
         {

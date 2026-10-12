@@ -1,0 +1,91 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>ColoringVoxelsTool</AssemblyName>
+    <RootNamespace>ColoringVoxelsTool</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <NoWarn>$(NoWarn);CS0436;CS0168;CS0219;NU1701;CS1701;CS1702</NoWarn>
+
+    <!-- 游戏安装目录：默认取仓库根目录的上一级。其它机器上用
+         -p:GameDir="D:\...\Coloring Voxels\" 覆盖。 -->
+    <GameDir Condition="'$(GameDir)' == ''">$(MSBuildThisFileDirectory)..\..\..</GameDir>
+    <ManagedDir>$(GameDir)\ColoringVoxels_Data\Managed\</ManagedDir>
+
+    <!-- 随仓库分发的 BepInEx x64 运行时（用于提供编译引用） -->
+    <CoreDir>$(MSBuildThisFileDirectory)..\..\vendor\bepinex-x64\BepInEx\core\</CoreDir>
+  </PropertyGroup>
+
+  <!-- 待迁移的 2D 模块（人工辅助屏幕扫描 / 设置界面注入），暂不参与编译。 -->
+  <ItemGroup>
+    <Compile Remove="AssistAutoDetect.cs" />
+    <Compile Remove="AssistEngine.cs" />
+    <Compile Remove="AssistOverlay.cs" />
+    <Compile Remove="AssistRegion.cs" />
+    <Compile Remove="AssistStore.cs" />
+    <Compile Remove="AssistWin32.cs" />
+    <Compile Remove="GameSettingsPanel.cs" />
+    <Compile Remove="PresetButtonInjector.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(CoreDir)BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(CoreDir)0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(ManagedDir)UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(ManagedDir)UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(ManagedDir)UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(ManagedDir)UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(ManagedDir)UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(ManagedDir)UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ScreenCaptureModule">
+      <HintPath>$(ManagedDir)UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(ManagedDir)Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

@@ -2,13 +2,13 @@
 //   由 scripts\build-changelog.ps1 从仓库根目录的 FEATURES.md 生成，请勿手动修改。
 //   要调整内容，请编辑 FEATURES.md，再重新运行该脚本。
 // </auto-generated>
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>首次安装时弹窗的全功能总览文本（来源：FEATURES.md）。</summary>
     internal static class FeatureGuide
     {
         public const string Body =
-"欢迎来到 Coloring Pixels Tool\r\n" +
+"欢迎来到 Coloring Voxels Tool\r\n" +
 "\r\n" +
 "先说结论：从现在起，你的手指头可以退休了。\r\n" +
 "\r\n" +
@@ -17,7 +17,7 @@ namespace ColoringPixelsTool.Installer
 "\r\n" +
 "一、这玩意儿到底是干什么的\r\n" +
 "\r\n" +
-"一句话：给《Coloring Pixels》配的涂色辅助工具，帮你去掉重复劳动那一大半。\r\n" +
+"一句话：给《Coloring Voxels》配的涂色辅助工具，帮你去掉重复劳动那一大半。\r\n" +
 "\r\n" +
 "装的是游戏内插件：进关卡后按 F1 呼出面板。\r\n" +
 "\r\n" +
@@ -152,7 +152,7 @@ namespace ColoringPixelsTool.Installer
 "\r\n" +
 "八、快捷键速查\r\n" +
 "\r\n" +
-"《Coloring Pixels》插件（全部可以在「设置 → 快捷键」里改）：\r\n" +
+"《Coloring Voxels》插件（全部可以在「设置 → 快捷键」里改）：\r\n" +
 "\r\n" +
 "· F1 打开 / 关闭面板\r\n" +
 "· F2 一键涂完当前关卡（需先解锁）\r\n" +

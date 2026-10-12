@@ -2,7 +2,7 @@
 //   由 scripts\build-changelog.ps1 从仓库根目录的 RELEASE_NOTES.md 生成，请勿手动修改。
 //   要调整内容，请编辑 RELEASE_NOTES.md，再重新运行该脚本。
 // </auto-generated>
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>安装完成后弹窗的更新公告文本（来源：RELEASE_NOTES.md / VERSION）。</summary>
     internal static class ReleaseNotes
@@ -10,7 +10,7 @@ namespace ColoringPixelsTool.Installer
         public const string Version = "3.0.6";
 
         public const string Body =
-"Coloring Pixels Tool V3.0.6\r\n" +
+"Coloring Voxels Tool V3.0.6\r\n" +
 "\r\n" +
 "这一版修的是数据丢失：重启游戏后经验条归零、用户资料（用户名 / 统计 / 时长）全部消失——不是你操作的问题，是存档解析器从 V2.0.0 起就带着一个致命 bug，这一版彻底修好，并加了「防覆盖保险丝」。覆盖安装即可，装完这次，数据真的会留下来了。\r\n" +
 "\r\n" +

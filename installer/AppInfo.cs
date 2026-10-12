@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>
     /// 游戏《Coloring Voxels》的描述信息。安装器完全按这张表工作：
@@ -36,10 +36,10 @@ namespace ColoringPixelsTool.Installer
         public const string ProductName = "Coloring Voxels Tool";
         public const string DisplayName = "Coloring Voxels Tool";
         public const string PluginGuid = "coloringvoxels.cheatsuite";
-        public const string PluginDllName = "ColoringPixelsTool.dll";
+        public const string PluginDllName = "ColoringVoxelsTool.dll";
         public const string PluginConfigName = "coloringvoxels.cheatsuite.cfg";
 
-        /// <summary>旧版本（ColoringPixelsCheat 时期）的插件文件名。安装 / 卸载时会一并清理，
+        /// <summary>旧版本（ColoringVoxelsCheat 时期）的插件文件名。安装 / 卸载时会一并清理，
         /// 否则同一 GUID 的旧插件会与新插件被 BepInEx 同时加载。</summary>
         public static readonly string[] LegacyPluginDllNames = new string[0];
 
@@ -47,7 +47,7 @@ namespace ColoringPixelsTool.Installer
         public const string PayloadResourceName = "payload.zip";
 
         public const string BepInExFolderName = "BepInEx";
-        public const string BackupFolderName = "_cpc_backup";
+        public const string BackupFolderName = "_cvt_backup";
         public const string MarkerFileName = "coloringvoxels.cheatsuite.installed.txt";
         public const string DoorstopMarkerFile = ".doorstop_version";
 

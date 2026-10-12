@@ -2,11 +2,11 @@
 <#
     把两份 Markdown 转成「公告」源码，保证各处看到的文字始终是同一份：
 
-        RELEASE_NOTES.md ──┬──> src\ColoringPixelsTool\Changelog.cs    游戏内 F1 面板的「更新公告」
+        RELEASE_NOTES.md ──┬──> src\ColoringVoxelsTool\Changelog.cs    游戏内 F1 面板的「更新公告」
                            ├──> installer\ReleaseNotes.cs             安装完成弹窗的「更新公告」
                            └──> (同时是 GitHub Release 正文，CI 直接读取本文件)
 
-        FEATURES.md ───────┬──> src\ColoringPixelsTool\FeatureGuide.cs 游戏内 F1 面板的「功能总览」（首次启动）
+        FEATURES.md ───────┬──> src\ColoringVoxelsTool\FeatureGuide.cs 游戏内 F1 面板的「功能总览」（首次启动）
                            └──> installer\FeatureGuide.cs             安装器首次安装时弹的「功能总览」
 
     两者的分工：
@@ -37,9 +37,9 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $versionFile = Join-Path $repoRoot 'VERSION'
 $notesFile = Join-Path $repoRoot 'RELEASE_NOTES.md'
 $featuresFile = Join-Path $repoRoot 'FEATURES.md'
-$pluginNotesOut = Join-Path $repoRoot 'src\ColoringPixelsTool\Changelog.cs'
+$pluginNotesOut = Join-Path $repoRoot 'src\ColoringVoxelsTool\Changelog.cs'
 $installerNotesOut = Join-Path $repoRoot 'installer\ReleaseNotes.cs'
-$pluginGuideOut = Join-Path $repoRoot 'src\ColoringPixelsTool\FeatureGuide.cs'
+$pluginGuideOut = Join-Path $repoRoot 'src\ColoringVoxelsTool\FeatureGuide.cs'
 $installerGuideOut = Join-Path $repoRoot 'installer\FeatureGuide.cs'
 
 function Step($m) { Write-Host "  >> $m" -ForegroundColor Cyan }
@@ -225,22 +225,22 @@ $BodyLiteral
     return (($head + "`r`n" + $tail) -replace "`r`n", "`n") -replace "`n", "`r`n"
 }
 
-$pluginNotesCs = New-SourceFile -Namespace 'ColoringPixelsTool' -ClassName 'Changelog' `
+$pluginNotesCs = New-SourceFile -Namespace 'ColoringVoxelsTool' -ClassName 'Changelog' `
     -SourceFile 'RELEASE_NOTES.md' -Summary '软件更新公告文本（来源：RELEASE_NOTES.md / VERSION）。' `
     -BodyLiteral (New-BodyLiteral -BodyLines ([string[]]$noteLines) -NewLineToken '\n') `
     -VersionMemberName 'CurrentVersion'
 
-$installerNotesCs = New-SourceFile -Namespace 'ColoringPixelsTool.Installer' -ClassName 'ReleaseNotes' `
+$installerNotesCs = New-SourceFile -Namespace 'ColoringVoxelsTool.Installer' -ClassName 'ReleaseNotes' `
     -SourceFile 'RELEASE_NOTES.md' -Summary '安装完成后弹窗的更新公告文本（来源：RELEASE_NOTES.md / VERSION）。' `
     -BodyLiteral (New-BodyLiteral -BodyLines ([string[]]$noteLines) -NewLineToken '\r\n') `
     -VersionMemberName 'Version'
 
-$pluginGuideCs = New-SourceFile -Namespace 'ColoringPixelsTool' -ClassName 'FeatureGuide' `
+$pluginGuideCs = New-SourceFile -Namespace 'ColoringVoxelsTool' -ClassName 'FeatureGuide' `
     -SourceFile 'FEATURES.md' -Summary '全功能总览文本（来源：FEATURES.md）。首次使用时展示一次，之后只看更新公告。' `
     -BodyLiteral (New-BodyLiteral -BodyLines ([string[]]$featureLines) -NewLineToken '\n') `
     -VersionMemberName ''
 
-$installerGuideCs = New-SourceFile -Namespace 'ColoringPixelsTool.Installer' -ClassName 'FeatureGuide' `
+$installerGuideCs = New-SourceFile -Namespace 'ColoringVoxelsTool.Installer' -ClassName 'FeatureGuide' `
     -SourceFile 'FEATURES.md' -Summary '首次安装时弹窗的全功能总览文本（来源：FEATURES.md）。' `
     -BodyLiteral (New-BodyLiteral -BodyLines ([string[]]$featureLines) -NewLineToken '\r\n') `
     -VersionMemberName ''

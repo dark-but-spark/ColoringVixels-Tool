@@ -2,9 +2,9 @@
 <#
     一键构建发布包：
 
-        1) build-mod.ps1        编译插件   -> artifacts\ColoringPixelsTool.dll
+        1) build-mod.ps1        编译插件   -> artifacts\ColoringVoxelsTool.dll
         2) build-payload.ps1    组装部署包 -> build\payload.zip
-        3) build-installer.ps1  编译安装器 -> dist\ColoringPixelsTool-Setup-v<版本>.exe
+        3) build-installer.ps1  编译安装器 -> dist\ColoringVoxelsTool-Setup-v<版本>.exe
         4) 生成校验和           -> dist\SHA256SUMS.txt
 
     版本号唯一来源是仓库根目录的 VERSION 文件。
@@ -43,7 +43,7 @@ function Resolve-Version {
 $version = Resolve-Version -Explicit $Version
 
 Write-Host ''
-Write-Host ('  Coloring Pixels Tool  发布构建  v' + $version) -ForegroundColor White
+Write-Host ('  Coloring Voxels Tool  发布构建  v' + $version) -ForegroundColor White
 Write-Host ('  仓库根目录：' + $repoRoot) -ForegroundColor DarkGray
 
 # ---------------------------------------------------------------- 公告
@@ -78,7 +78,7 @@ if (-not $SkipMod) {
 }
 else {
     Step '1/5  跳过插件编译（-SkipMod）'
-    $artifact = Join-Path $repoRoot 'artifacts\ColoringPixelsTool.dll'
+    $artifact = Join-Path $repoRoot 'artifacts\ColoringVoxelsTool.dll'
     if (-not (Test-Path -LiteralPath $artifact)) { Fail "缺少已编译插件：$artifact（去掉 -SkipMod 重新编译）" }
     Ok ('使用现有插件：' + $artifact)
 }
@@ -102,7 +102,7 @@ Ok '安装器就绪'
 # ---------------------------------------------------------------- 5. 校验和
 
 Step '5/5  生成校验和'
-$exe = Join-Path $dist ("ColoringPixelsTool-Setup-v{0}.exe" -f $version)
+$exe = Join-Path $dist ("ColoringVoxelsTool-Setup-v{0}.exe" -f $version)
 if (-not (Test-Path -LiteralPath $exe)) { Fail "找不到安装器：$exe" }
 
 $sumsFile = Join-Path $dist 'SHA256SUMS.txt'
@@ -110,7 +110,7 @@ $exeName = Split-Path -Leaf $exe
 $exeHash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
 
 $lines = New-Object System.Collections.ArrayList
-[void]$lines.Add("# Coloring Pixels Tool v$version - SHA256 checksums")
+[void]$lines.Add("# Coloring Voxels Tool v$version - SHA256 checksums")
 [void]$lines.Add("# Generated (UTC): " + (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
 [void]$lines.Add("$exeHash  $exeName")
 

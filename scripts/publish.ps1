@@ -4,8 +4,8 @@
 
     发版由 CI 完成（.github/workflows/release.yml 收到 v* 标签后自动构建单文件安装器、
     创建 GitHub Release 并上传 exe 与 SHA256SUMS.txt）。本脚本在推完标签后会等 CI 出包，
-    再把 exe 下载到桌面，文件名形如 ColoringPixelsTool-Setup-v1.2.1.exe，
-    同时覆盖一份固定名字 ColoringPixelsTool-Setup.exe，方便直接双击调试。
+    再把 exe 下载到桌面，文件名形如 ColoringVoxelsTool-Setup-v1.2.1.exe，
+    同时覆盖一份固定名字 ColoringVoxelsTool-Setup.exe，方便直接双击调试。
 
     用法：
         .\scripts\publish.ps1 -Message "fix: 修复高亮闪烁"
@@ -28,11 +28,11 @@
             不指定时会依次尝试：$env:CPT_GAME_DIR、仓库上一级、各盘 Steam 默认位置。
 
         .\scripts\publish.ps1 -Message "..." -SkipMod
-            跳过插件重编译，直接用仓库里已提交的 artifacts\ColoringPixelsTool.dll。
+            跳过插件重编译，直接用仓库里已提交的 artifacts\ColoringVoxelsTool.dll。
 
         关于版本号的一致性：
          VERSION 与 Plugin.Version 由本脚本同步；而 CI 打包时用的是仓库里已提交的
-         artifacts\ColoringPixelsTool.dll（CI 拿不到游戏程序集，无法现场编译）。
+         artifacts\ColoringVoxelsTool.dll（CI 拿不到游戏程序集，无法现场编译）。
          因此发版前必须在本地重编译插件，才能让面板显示的版本与安装包版本一致。
          本脚本会在提交前自动重编译（除非 -SkipMod）。
         #>
@@ -65,7 +65,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $versionFile = Join-Path $repoRoot 'VERSION'
-$pluginFile = Join-Path $repoRoot 'src\ColoringPixelsTool\Plugin.cs'
+$pluginFile = Join-Path $repoRoot 'src\ColoringVoxelsTool\Plugin.cs'
 $release = -not $NoRelease
 
 function Step($m) { Write-Host "`n== $m" -ForegroundColor Magenta }
@@ -178,7 +178,7 @@ function Resolve-GameDir {
     [void]$candidates.Add((Split-Path -Parent $repoRoot))
     # 常见 Steam 位置 + 所有已就绪盘符下的 Steam 库。
     # 这里刻意不写死某个盘：开发机的安装位置对别人没有意义，也不该留在仓库里。
-    $rel = 'Steam\steamapps\common\Coloring Pixels'
+    $rel = 'Steam\steamapps\common\Coloring Voxels'
     [void]$candidates.Add(('C:\Program Files (x86)\' + $rel))
     [void]$candidates.Add(('C:\Program Files\' + $rel))
     try {
@@ -194,7 +194,7 @@ function Resolve-GameDir {
         if ([string]::IsNullOrWhiteSpace($c)) { continue }
         $path = $null
         try { $path = (Resolve-Path -LiteralPath $c).Path } catch { continue }
-        if (Test-Path -LiteralPath (Join-Path $path 'ColoringPixels_Data\Managed\Assembly-CSharp.dll')) {
+        if (Test-Path -LiteralPath (Join-Path $path 'ColoringVoxels_Data\Managed\Assembly-CSharp.dll')) {
             return $path
         }
     }
@@ -223,7 +223,7 @@ function Test-DllVersion {
     }
 }
 
-# 重新编译插件，让 artifacts\ColoringPixelsTool.dll 里的 Plugin.Version 与 VERSION 保持一致。
+# 重新编译插件，让 artifacts\ColoringVoxelsTool.dll 里的 Plugin.Version 与 VERSION 保持一致。
 # 这一步很关键：CI 打包用的是仓库里已提交的 DLL，不在本地重编译的话，
 # 面板上显示的版本就会停在旧版本，和安装包对不上。
 function Invoke-ModBuild {
@@ -243,7 +243,7 @@ function Invoke-ModBuild {
     # build-mod.ps1 自己会在失败时 throw，这里直接透传它的输出即可。
     & $buildMod -GameDir $Game -Configuration Release
 
-    $dll = Join-Path $repoRoot 'artifacts\ColoringPixelsTool.dll'
+    $dll = Join-Path $repoRoot 'artifacts\ColoringVoxelsTool.dll'
     if (-not (Test-Path -LiteralPath $dll)) { Fail "插件编译后未找到产物：$dll" }
     Ok ('插件已重新编译：' + $dll)
 
@@ -340,7 +340,7 @@ else {
 
 # 重编译插件，确保 DLL 里的 Plugin.Version 与 VERSION 一致（面板版本跟随安装包版本）。
 if ($SkipMod) {
-    Warn '-SkipMod：跳过插件重编译，直接使用仓库里的 artifacts\ColoringPixelsTool.dll'
+    Warn '-SkipMod：跳过插件重编译，直接使用仓库里的 artifacts\ColoringVoxelsTool.dll'
 }
 else {
     $game = Resolve-GameDir -Explicit $GameDir
@@ -348,7 +348,7 @@ else {
         Warn @'
 未找到游戏目录，跳过插件重编译。
   这样一来，安装包里的插件仍是上一次编译的版本，面板显示的版本可能落后于安装包。
-  如需保证一致，请用 -GameDir "…\Coloring Pixels" 指定游戏目录，或按下面方式重编译：
+  如需保证一致，请用 -GameDir "…\Coloring Voxels" 指定游戏目录，或按下面方式重编译：
       .\scripts\build-mod.ps1 -Backend csc -GameDir "<游戏目录>"
 '@
     }
@@ -398,7 +398,7 @@ Step '4/6  打标签并推送（触发 CI 发版）'
 $tag = 'v' + $v
 if (Test-TagExists $tag) { Fail ('标签 ' + $tag + ' 已存在，无法重复发版') }
 
-Git-Run @('tag', '-a', $tag, '-m', ('Coloring Pixels Tool ' + $tag)) | Out-Null
+Git-Run @('tag', '-a', $tag, '-m', ('Coloring Voxels Tool ' + $tag)) | Out-Null
 if ($NoPush) { Warn '-NoPush：标签只建在本地' }
 else {
     Git-Run @('push', 'origin', $tag) | Out-Null
@@ -442,12 +442,12 @@ else {
     if (-not (Test-Path -LiteralPath $desktop)) { Fail ("桌面目录不存在：" + $desktop) }
 
     # 桌面上只放一个固定名字的安装器，每次发版覆盖，既方便双击调试也不会越攒越多。
-    $desktopExe = Join-Path $desktop 'ColoringPixelsTool-Setup.exe'
+    $desktopExe = Join-Path $desktop 'ColoringVoxelsTool-Setup.exe'
     Gh-Run @('release', 'download', $tag, '-R', $slug, '--pattern', '*.exe', '--output', $desktopExe, '--clobber') | Out-Null
 
     if (-not (Test-Path -LiteralPath $desktopExe)) { Fail ('桌面安装器未生成：' + $desktopExe) }
 
-    # 清掉早期发版留在桌面上的带版本号安装器（含更名前的 ColoringPixelsCheat 命名）
+    # 清掉早期发版留在桌面上的带版本号安装器（含更名前的 ColoringVoxelsCheat 命名）
     Get-ChildItem -LiteralPath $desktop -File -Filter '*-Setup-v*.exe' -ErrorAction SilentlyContinue |
         ForEach-Object {
             Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
@@ -467,7 +467,7 @@ Write-Host ('  版本    ：' + $tag) -ForegroundColor Cyan
 Write-Host ('  仓库    ：' + $web) -ForegroundColor DarkGray
 Write-Host ('  Release ：' + $web + '/releases/tag/' + $tag) -ForegroundColor Cyan
 if (-not $NoDesktop) {
-    Write-Host ('  桌面    ：' + (Join-Path ([Environment]::GetFolderPath('Desktop')) 'ColoringPixelsTool-Setup.exe')) -ForegroundColor Cyan
+    Write-Host ('  桌面    ：' + (Join-Path ([Environment]::GetFolderPath('Desktop')) 'ColoringVoxelsTool-Setup.exe')) -ForegroundColor Cyan
 }
 Write-Host '  ==================================================' -ForegroundColor DarkGray
 Write-Host ''

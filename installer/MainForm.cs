@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>安装器主窗口（无边框、深色、手动 DPI 缩放）。</summary>
     internal sealed class MainForm : Form
@@ -23,7 +23,7 @@ namespace ColoringPixelsTool.Installer
         private readonly Options _options;
         private readonly List<GameCandidate> _candidates = new List<GameCandidate>();
 
-        // 只支持一款游戏（《Coloring Pixels》）：界面上的提示文案都从这张表取。
+        // 只支持一款游戏（《Coloring Voxels》）：界面上的提示文案都从这张表取。
         private static readonly GameDescriptor _game = AppInfo.ColoringVoxels;
 
         private TextBox _txtDir;
@@ -1244,7 +1244,7 @@ namespace ColoringPixelsTool.Installer
 
             UpdateInfo info = _update;
             string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            string dest = Path.Combine(desktop, "ColoringPixelsTool-Setup-v" + info.Version + ".exe");
+            string dest = Path.Combine(desktop, "ColoringVoxelsTool-Setup-v" + info.Version + ".exe");
 
             if (File.Exists(dest))
             {

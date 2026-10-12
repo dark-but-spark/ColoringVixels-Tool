@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Security.Principal;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>管理员权限检测与提权重启。</summary>
     internal static class Elevation

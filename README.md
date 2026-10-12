@@ -1,15 +1,15 @@
 <div align="center">
 
-# Coloring Pixels Tool
+# Coloring Voxels Tool
 
-**《Coloring Pixels》的非官方辅助工具 —— 一键安装，开箱即用**
+**《Coloring Voxels》的非官方辅助工具 —— 一键安装，开箱即用**
 
 自动定位游戏目录、部署文件、启动游戏；进入任意关卡后按 <kbd>F1</kbd> 打开游戏内面板。
 
-[![Release](https://img.shields.io/github/v/release/zlwzk/ColoringPixels-Tool?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=5682ff)](https://github.com/zlwzk/ColoringPixels-Tool/releases)
+[![Release](https://img.shields.io/github/v/release/dark-but-spark/ColoringVixels-Tool?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=5682ff)](https://github.com/dark-but-spark/ColoringVixels-Tool/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20x86%20%2F%20x64-0078d4.svg)](#系统要求)
-[![Build](https://img.shields.io/github/actions/workflow/status/zlwzk/ColoringPixels-Tool/build.yml?label=build)](https://github.com/zlwzk/ColoringPixels-Tool/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/dark-but-spark/ColoringVixels-Tool/build.yml?label=build)](https://github.com/dark-but-spark/ColoringVixels-Tool/actions)
 
 </div>
 
@@ -17,14 +17,14 @@
 
 ## 简介
 
-支持的游戏：《Coloring Pixels》（Steam AppID **897330**，BepInEx 插件 + 游戏内面板）。
+支持的游戏：《Coloring Voxels》（Steam AppID **897330**，BepInEx 插件 + 游戏内面板）。
 
 工具由两部分组成：
 
 | 组件 | 说明 |
 | --- | --- |
-| **安装器** `ColoringPixelsTool-Setup.exe` | 单文件、免安装、可视化。自动检测游戏目录 → 部署文件 → 启动游戏，并支持检查更新。 |
-| **插件** `ColoringPixelsTool.dll` | 游戏内面板：分「自动完成」「人工辅助」两大模块，提供涂色、拟人涂色、定时连图、内容解锁、悬浮 HUD 等能力。 |
+| **安装器** `ColoringVoxelsTool-Setup.exe` | 单文件、免安装、可视化。自动检测游戏目录 → 部署文件 → 启动游戏，并支持检查更新。 |
+| **插件** `ColoringVoxelsTool.dll` | 游戏内面板：分「自动完成」「人工辅助」两大模块，提供涂色、拟人涂色、定时连图、内容解锁、悬浮 HUD 等能力。 |
 
 插件基于 **BepInEx 5（x86）** 与 **Harmony** 运行，不改动游戏本体文件（除注入所需的 `winhttp.dll` / `BepInEx/`）。
 
@@ -39,7 +39,7 @@
 - **一键识别画布**：缩放到想要的画面后点一下，就按游戏内部的画布几何自动贴合扫描区域、算出行数与格子大小，不用手动框选对格子；可视框带柔光填充、贴合格子网格与实时信息牌（默认关闭，不挡视线，按 F12 或点面板按钮随时开关）。
 - **画布颜色高亮**：把当前选中颜色在画布上的待涂格子高亮出来，方便肉眼快速定位；高亮颜色、样式、透明度均可自选，模式分「关闭 / 持续高亮 / 闪烁高亮」三档，<kbd>F6</kbd> 循环切换。
 - **游戏预设**：游戏自带那 4 个设置界面（无障碍 / 主菜单 / 游戏内 / 音乐）原样搬进面板，开关与滑条的分组、顺序跟游戏一一对应；改哪项立刻生效，一键在「推荐预设 / 游戏出厂默认」之间来回切换，还能把当前设置存成自己的预设。
-- **插件日志**：日志同时写进 `%APPDATA%\ColoringPixelsTool\logs\`（按天一个文件、自动保留最近 7 份），面板「调试」页可打开日志目录 / 清理历史、设置页可导出面板截图——出问题时有据可查。
+- **插件日志**：日志同时写进 `%APPDATA%\ColoringVoxelsTool\logs\`（按天一个文件、自动保留最近 7 份），面板「调试」页可打开日志目录 / 清理历史、设置页可导出面板截图——出问题时有据可查。
 - **内容解锁**：解锁全部 DLC、免费提示、显示隐藏书籍、标记书籍完成、解锁 Steam 成就。
 - **悬浮 HUD**：实时显示进度、剩余格子、剩余颜色明细与本图用时，位置/透明度可调。
 - **体验增强**：语音换色、等级与称号、经验与统计、游戏内「推荐预设」按钮、新手指引、爱心重置二次确认。
@@ -53,12 +53,12 @@
 ### 系统要求
 
 - Windows 10 / 11（x64 或 x86 系统均可）
-- 已安装 Steam 版的《Coloring Pixels》，且需 **32 位版本**：本插件不支持 64 位主程序
+- 已安装 Steam 版的《Coloring Voxels》，且需 **32 位版本**：本插件不支持 64 位主程序
 - 无需安装 .NET 运行时（插件随游戏自带的 Mono 运行；安装器使用系统自带的 .NET Framework）
 
 ### 一键安装
 
-1. 前往 [**Releases**](https://github.com/zlwzk/ColoringPixels-Tool/releases) 下载最新版 `ColoringPixelsTool-Setup-vX.Y.Z.exe`。
+1. 前往 [**Releases**](https://github.com/dark-but-spark/ColoringVixels-Tool/releases) 下载最新版 `ColoringVoxelsTool-Setup-vX.Y.Z.exe`。
 2. 关闭正在运行的游戏。
 3. 双击运行安装器：
    - 若有安全软件拦截，请选择「允许」/「仍要运行」。
@@ -128,20 +128,20 @@
 
 ### 配置文件
 
-《Coloring Pixels》插件首次运行后会把默认配置写入：
+《Coloring Voxels》插件首次运行后会把默认配置写入：
 
 ```
-<游戏目录>\BepInEx\config\coloringpixels.cheatsuite.cfg
+<游戏目录>\BepInEx\config\coloringvoxels.cheatsuite.cfg
 ```
 
 可直接编辑该文件修改热键、参数与默认值（面板内的改动也会实时写回）。主要分组：`0-通用`、`1-解锁`、`2-显示`、`3-拟人涂色`、`4-人工辅助`、`5-自动化`、`6-面板`、`8-推荐预设`、`9-快捷键`、`A-功能开关`、`B-反馈`。
 
-人工辅助的区域与参数存在 `BepInEx\config\ColoringPixelsTool.Assist\`。
+人工辅助的区域与参数存在 `BepInEx\config\ColoringVoxelsTool.Assist\`。
 
 **等级与用户资料存档**（等级、经验值、各项统计）刻意存在漫游目录，不随游戏目录一起被清理：
 
 ```
-%APPDATA%\ColoringPixelsTool\ColoringPixelsTool.Profile.json
+%APPDATA%\ColoringVoxelsTool\ColoringVoxelsTool.Profile.json
 ```
 
 `BepInEx\config` 会随「覆盖安装 / 卸载插件 / 验证游戏文件完整性 / 重装游戏」一起消失，
@@ -152,7 +152,7 @@
 安装器同时支持无人值守模式，便于脚本批量部署：
 
 ```text
-ColoringPixelsTool-Setup.exe [选项]
+ColoringVoxelsTool-Setup.exe [选项]
 
   --dir=<路径>        指定游戏目录（跳过自动检测）
   --game=cp           指定目标游戏（本工具只有一款，纯兼容旧快捷方式）
@@ -175,10 +175,10 @@ ColoringPixelsTool-Setup.exe [选项]
 
 ```powershell
 # 静默安装到指定目录，不启动游戏
-.\ColoringPixelsTool-Setup.exe --silent --dir="C:\Program Files (x86)\Steam\steamapps\common\Coloring Pixels" --no-launch
+.\ColoringVoxelsTool-Setup.exe --silent --dir="C:\Program Files (x86)\Steam\steamapps\common\Coloring Voxels" --no-launch
 
 # 只检测游戏目录
-.\ColoringPixelsTool-Setup.exe --detect-only
+.\ColoringVoxelsTool-Setup.exe --detect-only
 ```
 
 ## 常见问题
@@ -187,8 +187,8 @@ ColoringPixelsTool-Setup.exe [选项]
 <summary><b>游戏里按 F1 没有反应？</b></summary>
 
 - 确认已**进入关卡**（主菜单下面板逻辑不生效）。
-- 检查游戏目录下是否存在 `winhttp.dll`、`BepInEx\core\BepInEx.Preloader.dll`、`BepInEx\plugins\ColoringPixelsTool.dll`。
-- 查看 `BepInEx\LogOutput.log`，搜索 `Coloring Pixels Tool` 是否成功加载。
+- 检查游戏目录下是否存在 `winhttp.dll`、`BepInEx\core\BepInEx.Preloader.dll`、`BepInEx\plugins\ColoringVoxelsTool.dll`。
+- 查看 `BepInEx\LogOutput.log`，搜索 `Coloring Voxels Tool` 是否成功加载。
 
 </details>
 
@@ -203,7 +203,7 @@ ColoringPixelsTool-Setup.exe [选项]
 <details>
 <summary><b>安装器提示「目录不可用」或找不到游戏？</b></summary>
 
-- 请选择包含游戏主程序 `ColoringPixels.exe` 的那一层目录。
+- 请选择包含游戏主程序 `ColoringVoxels.exe` 的那一层目录。
 - 或使用 `--deep` 参数进行全盘深度扫描。
 - 64 位主程序不受支持：本插件基于 BepInEx 5（x86），仅支持 32 位版本。
 
@@ -239,17 +239,17 @@ ColoringPixelsTool-Setup.exe [选项]
 # 一键构建：编译插件 -> 组装部署包 -> 编译安装器 -> 生成 SHA256
 .\scripts\build-release.ps1
 
-# 产物：dist\ColoringPixelsTool-Setup-v<版本>.exe 与 dist\SHA256SUMS.txt
+# 产物：dist\ColoringVoxelsTool-Setup-v<版本>.exe 与 dist\SHA256SUMS.txt
 ```
 
-> 编译插件需要引用游戏自身的 `Assembly-CSharp.dll`，因此本机需安装《Coloring Pixels》，
-> 或直接使用仓库内已随包分发的 `artifacts\ColoringPixelsTool.dll`（`build-release.ps1 -SkipMod`）。
+> 编译插件需要引用游戏自身的 `Assembly-CSharp.dll`，因此本机需安装《Coloring Voxels》，
+> 或直接使用仓库内已随包分发的 `artifacts\ColoringVoxelsTool.dll`（`build-release.ps1 -SkipMod`）。
 
 ## 目录结构
 
 ```
 CheatTools/
-├─ src/ColoringPixelsTool/     插件源码（C#，BepInEx + Harmony）
+├─ src/ColoringVoxelsTool/     插件源码（C#，BepInEx + Harmony）
 │  ├─ Assist*.cs                人工辅助引擎（区域模型 / 屏幕扫描 / 模拟鼠标）
 │  └─ AssistAutoDetect.cs       一键识别画布区域与格子大小（读游戏内部画布几何）
 ├─ installer/                   安装器源码（C# 5 / WinForms，单文件）
@@ -278,7 +278,7 @@ CheatTools/
 
 - 本项目仅供**学习、交流与单机娱乐**使用，请勿用于任何商业或非法用途。
 - 请在下载后 **24 小时内**自行删除相关内容；因使用本工具产生的一切后果由使用者自负。
-- 本项目与《Coloring Pixels》的开发商、发行商及 Steam 无关，游戏相关的全部权利归其所有者所有。
+- 本项目与《Coloring Voxels》的开发商、发行商及 Steam 无关，游戏相关的全部权利归其所有者所有。
 - 请支持正版游戏。
 
 ## 许可证

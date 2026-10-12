@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace ColoringPixelsTool.Installer
+namespace ColoringVoxelsTool.Installer
 {
     /// <summary>
     /// 安装器自己的少量持久化状态，放在 %APPDATA%\ColoringVoxelsTool\installer.settings。
