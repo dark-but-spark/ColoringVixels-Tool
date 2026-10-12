@@ -50,7 +50,7 @@ catch {
     Fail "游戏目录不存在：$GameDir"
 }
 
-$managed = Join-Path $GameDir 'ColoringPixels_Data\Managed'
+$managed = Join-Path $GameDir 'ColoringVoxels_Data\Managed'
 $gameAsm = Join-Path $managed 'Assembly-CSharp.dll'
 if (-not (Test-Path -LiteralPath $gameAsm)) {
     Fail @"
@@ -155,7 +155,7 @@ function Compile-WithCsc {
     Step "Roslyn csc：$Csc"
 
     # 需要引用的程序集：BepInEx 核心 + 游戏程序集
-    $core = Join-Path $repoRoot 'vendor\bepinex-x86\BepInEx\core'
+    $core = Join-Path $repoRoot 'vendor\bepinex-x64\BepInEx\core'
     $refs = New-Object System.Collections.ArrayList
 
     foreach ($r in @('BepInEx.dll', '0Harmony.dll', 'BepInEx.Harmony.dll')) {
@@ -169,14 +169,12 @@ function Compile-WithCsc {
             'UnityEngine.dll',
             'UnityEngine.CoreModule.dll',
             'UnityEngine.IMGUIModule.dll',
-            'UnityEngine.InputModule.dll',
+            'UnityEngine.InputLegacyModule.dll',
             'UnityEngine.UIModule.dll',
             'UnityEngine.UI.dll',
-            'UnityEngine.TilemapModule.dll',
-            'UnityEngine.GridModule.dll',
             'UnityEngine.TextRenderingModule.dll',
-            'UnityEngine.ImageConversionModule.dll',
-            'UnityEngine.ScreenCaptureModule.dll'
+            'UnityEngine.ScreenCaptureModule.dll',
+            'Unity.TextMeshPro.dll'
         )) {
         $p = Join-Path $managed $r
         if (Test-Path -LiteralPath $p) { [void]$refs.Add($p) }

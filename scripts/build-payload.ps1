@@ -75,15 +75,15 @@ function New-ZipFromDirectory {
 
 # ---------------------------------------------------------------- 1. vendor 检查
 
-$vendor = Join-Path $repoRoot 'vendor\bepinex-x86'
+$vendor = Join-Path $repoRoot 'vendor\bepinex-x64'
 $proxy = Join-Path $vendor 'winhttp.dll'
 if (-not (Test-Path -LiteralPath $proxy)) {
-    Fail "缺少 $proxy。请确认仓库中的 vendor\bepinex-x86 完整。"
+    Fail "缺少 $proxy。请确认仓库中的 vendor\bepinex-x64 完整。"
 }
 
 $preloader = Join-Path $vendor 'BepInEx\core\BepInEx.Preloader.dll'
 if (-not (Test-Path -LiteralPath $preloader)) {
-    Fail "缺少 $preloader。请确认仓库中的 vendor\bepinex-x86 完整。"
+    Fail "缺少 $preloader。请确认仓库中的 vendor\bepinex-x64 完整。"
 }
 
 # ---------------------------------------------------------------- 2. 找到插件 DLL

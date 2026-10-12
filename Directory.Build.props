@@ -6,11 +6,11 @@
   -->
   <PropertyGroup>
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
-    <Product>Coloring Pixels Tool</Product>
-    <Company>Coloring Pixels Tool contributors</Company>
-    <Authors>Coloring Pixels Tool contributors</Authors>
+    <Product>Coloring Voxels Tool</Product>
+    <Company>Coloring Voxels Tool contributors</Company>
+    <Authors>Coloring Voxels Tool contributors</Authors>
     <Copyright>MIT License</Copyright>
-    <RepositoryUrl>https://github.com/zlwzk/ColoringPixels-Tool</RepositoryUrl>
+    <RepositoryUrl>https://github.com/dark-but-spark/ColoringVixels-Tool</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
