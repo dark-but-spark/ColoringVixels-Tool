@@ -137,7 +137,7 @@ function Test-DotnetSdk {
 function Compile-WithDotnet {
     Step 'dotnet build……'
     $env:GameDir = $GameDir
-    & dotnet build $csproj -c $Configuration --nologo -v:m
+    & dotnet build $csproj -c $Configuration --nologo -v:m 2>&1 | Out-Host
     return $LASTEXITCODE
 }
 
@@ -145,7 +145,7 @@ function Compile-WithMSBuild {
     param([string]$MSBuild)
     Step "MSBuild：$MSBuild"
     $env:GameDir = $GameDir
-    & $MSBuild $csproj "/p:Configuration=$Configuration" /nologo /v:m
+    & $MSBuild $csproj "/p:Configuration=$Configuration" /nologo /v:m 2>&1 | Out-Host
     return $LASTEXITCODE
 }
 
