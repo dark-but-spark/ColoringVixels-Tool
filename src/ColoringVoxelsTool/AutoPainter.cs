@@ -53,6 +53,10 @@ namespace ColoringVoxelsTool
         private int _layer;
         private int _cursorX = -1, _cursorY = -1;
 
+        // 涂不动（没有可点方块等）的颜色：本轮跳过，避免在「游戏显示还差几格但点不到」时死循环。
+        private readonly HashSet<int> _unpaintable = new HashSet<int>();
+        private int _paintedInPath;
+
         private float _timer, _interval, _pauseUntil, _startTime, _lastElapsed;
         private float _cpsWindow, _actualCps;
         private int _cpsCount, _strokeLeft;
@@ -147,6 +151,7 @@ namespace ColoringVoxelsTool
                 _path = null;
                 _pathIndex = 0;
                 _cursorX = _cursorY = -1;
+                _unpaintable.Clear();
             }
 
             // 换层时有生成 / 出场动画，期间游戏不接受涂色；等它播完再继续，
@@ -187,6 +192,9 @@ namespace ColoringVoxelsTool
 
             if (_path == null || _pathIndex >= _path.Count)
             {
+                // 上一段笔顺一笔都没涂上（例如方块点不到）→ 记下这个颜色本轮跳过，别死循环
+                if (CurrentColour >= 0 && _paintedInPath == 0) _unpaintable.Add(CurrentColour);
+
                 if (!LoadNextColour())
                 {
                     Finish();
@@ -200,9 +208,13 @@ namespace ColoringVoxelsTool
             int target = GameApi.TargetColour(b, cell.x, _layer, cell.y);
             if (target >= 0 && b.voxelProgress[cell.x, _layer, cell.y] != target)
             {
+                // 游戏在涂完一种颜色时会自动换色，这里确保涂的是本段笔顺的颜色，避免涂错
+                if (b.selectedCol != CurrentColour) GameApi.SelectColour(b, CurrentColour);
+
                 if (GameApi.PaintVoxel(b, cell.x, _layer, cell.y))
                 {
                     PaintedThisRun++;
+                    _paintedInPath++;
                     _cursorX = cell.x;
                     _cursorY = cell.y;
                 }
@@ -230,44 +242,32 @@ namespace ColoringVoxelsTool
 
             while (true)
             {
-                if (_colours == null)
+                if (_colours == null || _colourIndex >= _colours.Count)
                 {
+                    // 只涂当前颜色：涂完这种颜色就收工，不升层
+                    if (RestrictToColour > 0) return false;
+
+                    // 重新统计当前层还有哪些颜色待涂（会捞回「被游戏自动换色涂错、又变回待涂」的颜色）
                     _colours = GameApi.PendingColours(b, _layer);
                     if (LargestColourFirst)
                         _colours.Sort((a, c) =>
                             GameApi.PendingCells(b, _layer, c).Count.CompareTo(GameApi.PendingCells(b, _layer, a).Count));
                     _colourIndex = 0;
-                }
 
-                if (_colourIndex >= _colours.Count)
-                {
-                    // 只涂当前颜色：涂完这种颜色就收工，不升层
-                    if (RestrictToColour > 0) return false;
+                    if (_colours.Count == 0) return AdvanceLayer();   // 本层没有待涂颜色 → 换层
 
-                    // 当前层其实还没涂完（例如刚换层、格子还没就绪）：重新规划，别急着升层
-                    if (GameApi.LayerRemaining(b, _layer) > 0)
+                    // 还有待涂颜色，但都试过且涂不动 → 也换层，避免卡死
+                    bool anyPaintable = false;
+                    for (int i = 0; i < _colours.Count; i++)
                     {
-                        _colours = null;
-                        _colourIndex = 0;
-                        return true;
+                        if (!_unpaintable.Contains(_colours[i])) { anyPaintable = true; break; }
                     }
-
-                    int before = b.selectedLayer;
-                    GameApi.NextLayer(b, true);
-                    if (b.selectedLayer == before) return false; // 没有下一层了 → 整图完成
-
-                    _layer = b.selectedLayer;
-                    CurrentLayer = _layer;
-                    _colours = null;
-                    _colourIndex = 0;
-                    _path = null;
-                    _pathIndex = 0;
-                    _cursorX = _cursorY = -1;
-                    return true;
+                    if (!anyPaintable) return AdvanceLayer();
                 }
 
                 int colour = _colours[_colourIndex++];
                 if (RestrictToColour > 0 && colour != RestrictToColour) continue;
+                if (_unpaintable.Contains(colour)) continue;
 
                 List<Vector2Int> cells = GameApi.PendingCells(b, _layer, colour);
                 if (cells.Count == 0) continue;
@@ -277,9 +277,29 @@ namespace ColoringVoxelsTool
 
                 _path = BuildPath(cells, _cursorX, _cursorY);
                 _pathIndex = 0;
+                _paintedInPath = 0;
                 _strokeLeft = Mathf.Max(1, StrokeLength + _rng.Next(-StrokeLength / 3, StrokeLength / 3 + 1));
                 return true;
             }
+        }
+
+        /// <summary>升到下一层；没有下一层返回 false（整图完成）。</summary>
+        private bool AdvanceLayer()
+        {
+            var b = _b;
+            int before = b.selectedLayer;
+            GameApi.NextLayer(b, true);
+            if (b.selectedLayer == before) return false;
+
+            _layer = b.selectedLayer;
+            CurrentLayer = _layer;
+            _colours = null;
+            _colourIndex = 0;
+            _path = null;
+            _pathIndex = 0;
+            _cursorX = _cursorY = -1;
+            _unpaintable.Clear();
+            return true;
         }
 
         // ------------------------------------------------------------ 笔顺规划

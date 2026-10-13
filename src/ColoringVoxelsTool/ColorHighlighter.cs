@@ -6,11 +6,10 @@ namespace ColoringVoxelsTool
     /// <summary>
     /// 把「当前选中的颜色」在画布上对应的待涂体素高亮出来，方便肉眼快速定位（3D 版）。
     ///
-    /// 性能：
-    ///   · 待高亮的体素列表按 (关卡:层:颜色) 缓存，每 0.5s 或键变化才重扫一层；
-    ///   · 屏幕坐标只在**画面变化时**（相机移动 / 旋转 / 缩放 / 分辨率变化）才重算，静止时直接复用；
-    ///   · 每帧只做「按缓存矩形叠加半透明色块」，并设上限，避免大图卡顿。
-    /// IMGUI 是立即模式，叠加层仍需每帧重画，但上面的重活都只在必要时做。
+    /// 坐标：方块 (x,y,z) 的世界坐标中心就是整数 (x,y,z)（方块跨度 ±0.5）。
+    /// 高亮取方块**顶面四角**投影后的屏幕包围盒，保证盖住整块，而不是只点一个中心点。
+    ///
+    /// 性能：待高亮体素列表按 (关卡:层:颜色) 缓存；屏幕坐标只在画面变化时重算；每帧只叠加缓存矩形。
     /// </summary>
     internal class ColorHighlighter : MonoBehaviour
     {
@@ -39,6 +38,7 @@ namespace ColoringVoxelsTool
             }
         }
 
+        // 每个待高亮体素的中心世界坐标 (x, layer, z)
         private readonly List<Vector3> _cells = new List<Vector3>();
         private readonly List<Rect> _rects = new List<Rect>();
         private string _cacheKey = "";
@@ -124,22 +124,45 @@ namespace ColoringVoxelsTool
             _sh = Screen.height;
 
             float w = Screen.width, h = Screen.height;
+
             for (int i = 0; i < _cells.Count; i++)
             {
-                Vector3 sp = cam.WorldToScreenPoint(_cells[i]);
-                if (sp.z <= 0f) { _rects.Add(new Rect(0f, 0f, 0f, 0f)); continue; }
+                Vector3 c = _cells[i];              // 方块中心 (x, layer, z)
+                float top = c.y + 0.5f;             // 方块顶面
+                float x0 = c.x - 0.5f, x1 = c.x + 0.5f;
+                float z0 = c.z - 0.5f, z1 = c.z + 0.5f;
 
-                float sx = sp.x;
-                float sy = h - sp.y;
-                if (sx < -16f || sy < -16f || sx > w + 16f || sy > h + 16f)
+                float minX = float.MaxValue, minY = float.MaxValue;
+                float maxX = float.MinValue, maxY = float.MinValue;
+                bool ok = true;
+
+                ok &= Project(cam, x0, top, z0, ref minX, ref minY, ref maxX, ref maxY, h);
+                ok &= Project(cam, x1, top, z0, ref minX, ref minY, ref maxX, ref maxY, h);
+                ok &= Project(cam, x1, top, z1, ref minX, ref minY, ref maxX, ref maxY, h);
+                ok &= Project(cam, x0, top, z1, ref minX, ref minY, ref maxX, ref maxY, h);
+
+                if (!ok || maxX < -16f || maxY < -16f || minX > w + 16f || minY > h + 16f)
                 {
                     _rects.Add(new Rect(0f, 0f, 0f, 0f));
                     continue;
                 }
 
-                float size = Mathf.Clamp(260f / Mathf.Max(1f, sp.z), 4f, 46f);
-                _rects.Add(new Rect(sx - size * 0.5f, sy - size * 0.5f, size, size));
+                _rects.Add(new Rect(minX, minY, Mathf.Max(1f, maxX - minX), Mathf.Max(1f, maxY - minY)));
             }
+        }
+
+        private static bool Project(Camera cam, float x, float y, float z,
+            ref float minX, ref float minY, ref float maxX, ref float maxY, float h)
+        {
+            Vector3 sp = cam.WorldToScreenPoint(new Vector3(x, y, z));
+            if (sp.z <= 0f) return false;
+            float sx = sp.x;
+            float sy = h - sp.y;
+            if (sx < minX) minX = sx;
+            if (sx > maxX) maxX = sx;
+            if (sy < minY) minY = sy;
+            if (sy > maxY) maxY = sy;
+            return true;
         }
 
         private void Rebuild(Builder b, int layer, int colour, bool onlyPending)
@@ -155,7 +178,7 @@ namespace ColoringVoxelsTool
                     if (GameApi.TargetColour(b, x, layer, z) != colour) continue;
                     if (onlyPending && vp[x, layer, z] == colour) continue;
 
-                    _cells.Add(new Vector3(x + 0.5f, layer + 0.5f, z + 0.5f));
+                    _cells.Add(new Vector3(x, layer, z));
                     if (_cells.Count >= MaxMarkers) return;
                 }
             }

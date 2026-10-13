@@ -251,6 +251,7 @@ namespace ColoringVoxelsTool
             for (int i = 0; i < cells.Count; i++)
             {
                 if (b.selectedLayer != layer) break; // 这一层已经涂满、游戏自动翻页了
+                if (b.selectedCol != colourId) SelectColour(b, colourId); // 游戏自动换色时纠回来
                 if (PaintVoxel(b, cells[i].x, layer, cells[i].y)) n++;
             }
             return n;
