@@ -103,30 +103,35 @@ namespace ColoringVoxelsTool
 
         // ---------------------------------------------------------------- 统计
 
+        // 说明：这两个读数原先逐格扫描整张三维网格（O(N)），面板 HUD / 预览 / 计时每帧都调，
+        // 大图上会直接把帧率拖垮。改为读游戏自己维护的计数器 / 关卡清单，O(1)。
+
         public static int TotalVoxels(Builder b)
         {
-            if (!Size(b, out int xn, out int yn, out int zn)) return 0;
-            int n = 0;
-            for (int x = 0; x < xn; x++)
-                for (int y = 0; y < yn; y++)
-                    for (int z = 0; z < zn; z++)
-                        if (CountedColour(b, x, y, z) >= 0) n++;
-            return n;
+            if (b == null) return 0;
+            CrossLevelStorage st = St;
+            if (st == null) return 0;
+            try
+            {
+                List<LevelVersionData> versioned = st.levelData.versionedData;
+                if (versioned == null || versioned.Count == 0) return 0;
+                int v = st.levelSaveData != null ? st.levelSaveData.levelVersion : 0;
+                if (v < 0 || v >= versioned.Count) v = versioned.Count - 1;
+                LevelVersionData vd = versioned[v];
+                bool hide = st.mainMenuSaveData != null && st.mainMenuSaveData.hideNonEssentialVoxels;
+                return hide ? vd.voxelsCountSimplified : vd.voxelsCount;
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
         }
 
         public static int PaintedVoxels(Builder b)
         {
-            if (!Size(b, out int xn, out int yn, out int zn)) return 0;
-            short[,,] vp = b.voxelProgress;
-            int n = 0;
-            for (int x = 0; x < xn; x++)
-                for (int y = 0; y < yn; y++)
-                    for (int z = 0; z < zn; z++)
-                    {
-                        int t = CountedColour(b, x, y, z);
-                        if (t >= 0 && vp[x, y, z] == t) n++;
-                    }
-            return n;
+            if (b == null) return 0;
+            try { return Mathf.Max(0, Mathf.RoundToInt(b.GetTotalPlacedVoxels())); }
+            catch (Exception) { return 0; }
         }
 
         public static int RemainingVoxels(Builder b) => Mathf.Max(0, TotalVoxels(b) - PaintedVoxels(b));
@@ -557,7 +562,9 @@ namespace ColoringVoxelsTool
             }
         }
 
-        /// <summary>面板沿用的 2D ClickTest 形状视图；不在关卡时返回 null。</summary>
+        private static readonly LevelView _levelView = new LevelView();
+
+        /// <summary>面板沿用的 2D ClickTest 形状视图；不在关卡时返回 null。（复用实例，避免每帧分配）</summary>
         public static LevelView Ct
         {
             get
@@ -565,15 +572,13 @@ namespace ColoringVoxelsTool
                 Builder b = B;
                 if (!InLevel(b)) return null;
                 Size(b, out int xn, out int _, out int zn);
-                return new LevelView
-                {
-                    xMax = xn,
-                    yMax = zn,
-                    pixelsColored = PaintedVoxels(b),
-                    gameOver = b.gameState == Builder.GameState.Finished,
-                    selectedColourID = b.selectedCol + 1,
-                    colourCounts = ColourCounts(b),
-                };
+                _levelView.xMax = xn;
+                _levelView.yMax = zn;
+                _levelView.pixelsColored = PaintedVoxels(b);
+                _levelView.gameOver = b.gameState == Builder.GameState.Finished;
+                _levelView.selectedColourID = b.selectedCol + 1;
+                _levelView.colourCounts = ColourCounts(b);
+                return _levelView;
             }
         }
 

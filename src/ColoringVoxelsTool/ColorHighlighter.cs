@@ -1,16 +1,23 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace ColoringVoxelsTool
 {
     /// <summary>
     /// 把「当前选中的颜色」在画布上对应的待涂体素高亮出来，方便肉眼快速定位（3D 版）。
     ///
-    /// 实现方式：在 OnGUI(Repaint) 阶段把每个待涂体素的世界坐标用主相机投影到屏幕，
-    /// 叠加一块半透明色标，不改动游戏数据。只处理当前层（游戏一次也只让涂这一层）。
+    /// 性能：待高亮的体素列表**按 (关卡:层:颜色) 缓存**（每 0.5 秒或键变化才重扫），
+    /// 每帧只做「投影 + 画标记」，并设上限，避免大图上每帧扫全层 + 逐格投影把帧率拖垮。
+    /// 只处理当前层（游戏一次也只让涂这一层）。
     /// </summary>
     internal class ColorHighlighter : MonoBehaviour
     {
         public static ColorHighlighter Instance;
+
+        /// <summary>每帧最多绘制的标记数（超出则只画前若干个，避免极端大图卡顿）。</summary>
+        private const int MaxMarkers = 3000;
+
+        private const float RebuildInterval = 0.5f;
 
         private static Texture2D _px;
 
@@ -31,6 +38,10 @@ namespace ColoringVoxelsTool
                 return _px;
             }
         }
+
+        private readonly List<Vector3> _cells = new List<Vector3>();
+        private string _cacheKey = "";
+        private float _rebuildAt;
 
         private void Awake()
         {
@@ -54,7 +65,18 @@ namespace ColoringVoxelsTool
 
             int layer = b.selectedLayer;
             if (layer < 0) return;
-            if (!GameApi.Size(b, out int xn, out int _, out int zn)) return;
+
+            bool onlyPending = Plugin.HighlightOnlyPending.Value;
+
+            // 列表：键变化或到刷新时间才重扫当前层
+            string key = GameApi.LevelKey + ":" + layer + ":" + colour + ":" + (onlyPending ? 1 : 0);
+            if (key != _cacheKey || Time.unscaledTime >= _rebuildAt)
+            {
+                Rebuild(b, layer, colour, onlyPending);
+                _cacheKey = key;
+                _rebuildAt = Time.unscaledTime + RebuildInterval;
+            }
+            if (_cells.Count == 0) return;
 
             float alpha = Mathf.Clamp01(Plugin.HighlightAlpha.Value);
             if (Plugin.HighlightMode.Value == 2)
@@ -62,26 +84,37 @@ namespace ColoringVoxelsTool
 
             Color baseCol = Plugin.HighlightColor;
             Color col = new Color(baseCol.r, baseCol.g, baseCol.b, alpha);
-            bool onlyPending = Plugin.HighlightOnlyPending.Value;
-            short[,,] vp = b.voxelProgress;
 
+            float w = Screen.width, h = Screen.height;
+            for (int i = 0; i < _cells.Count; i++)
+            {
+                Vector3 sp = cam.WorldToScreenPoint(_cells[i]);
+                if (sp.z <= 0f) continue;
+
+                float sx = sp.x;
+                float sy = h - sp.y;
+                if (sx < -16f || sy < -16f || sx > w + 16f || sy > h + 16f) continue;
+
+                float size = Mathf.Clamp(260f / Mathf.Max(1f, sp.z), 4f, 46f);
+                Fill(new Rect(sx - size * 0.5f, sy - size * 0.5f, size, size), col);
+            }
+        }
+
+        private void Rebuild(Builder b, int layer, int colour, bool onlyPending)
+        {
+            _cells.Clear();
+            if (!GameApi.Size(b, out int xn, out int _, out int zn)) return;
+
+            short[,,] vp = b.voxelProgress;
             for (int x = 0; x < xn; x++)
             {
                 for (int z = 0; z < zn; z++)
                 {
-                    int t = GameApi.TargetColour(b, x, layer, z);
-                    if (t != colour) continue;
-                    if (onlyPending && vp[x, layer, z] == t) continue;
+                    if (GameApi.TargetColour(b, x, layer, z) != colour) continue;
+                    if (onlyPending && vp[x, layer, z] == colour) continue;
 
-                    Vector3 sp = cam.WorldToScreenPoint(new Vector3(x + 0.5f, layer + 0.5f, z + 0.5f));
-                    if (sp.z <= 0f) continue;
-
-                    float sx = sp.x;
-                    float sy = Screen.height - sp.y;
-                    if (sx < -16f || sy < -16f || sx > Screen.width + 16f || sy > Screen.height + 16f) continue;
-
-                    float size = Mathf.Clamp(260f / Mathf.Max(1f, sp.z), 4f, 46f);
-                    Fill(new Rect(sx - size * 0.5f, sy - size * 0.5f, size, size), col);
+                    _cells.Add(new Vector3(x + 0.5f, layer + 0.5f, z + 0.5f));
+                    if (_cells.Count >= MaxMarkers) return;
                 }
             }
         }
