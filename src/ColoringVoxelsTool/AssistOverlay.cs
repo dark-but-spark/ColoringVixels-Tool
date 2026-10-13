@@ -330,9 +330,14 @@ namespace ColoringVoxelsTool
             return new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
         }
 
-        /// <summary>客户区原点（每帧更新一次，绘制与命中测试共用）。</summary>
+        private float _originNext;
+
+        /// <summary>客户区原点（最多每 0.5 秒刷新一次；绘制与命中测试共用）。</summary>
         private void RefreshClientOrigin()
         {
+            if (Time.unscaledTime < _originNext) return;
+            _originNext = Time.unscaledTime + 0.5f;
+
             int ox, oy;
             if (AssistWin32.TryGetClientOrigin(Screen.width, Screen.height, out ox, out oy))
             {

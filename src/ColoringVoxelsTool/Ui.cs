@@ -159,17 +159,13 @@ namespace ColoringVoxelsTool
                 if (_font != null) return _font;
                 try
                 {
-                    var installed = new HashSet<string>(Font.GetOSInstalledFontNames());
+                    // 直接按优先级尝试创建，避免 Font.GetOSInstalledFontNames() 枚举全部系统字体
+                    // （这个调用很慢，首次触发往往正好卡在进游戏 / 界面绘制那一帧）。
                     foreach (var name in FontPreference)
                     {
-                        if (installed.Contains(name))
-                        {
-                            _font = Font.CreateDynamicFontFromOSFont(name, 16);
-                            break;
-                        }
+                        Font f = Font.CreateDynamicFontFromOSFont(name, 16);
+                        if (f != null) { _font = f; break; }
                     }
-                    if (_font == null)
-                        _font = Font.CreateDynamicFontFromOSFont(Font.GetOSInstalledFontNames()[0], 16);
                 }
                 catch
                 {

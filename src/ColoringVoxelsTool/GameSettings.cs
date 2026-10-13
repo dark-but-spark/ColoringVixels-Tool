@@ -55,7 +55,17 @@ namespace ColoringVoxelsTool
             get { return GameApi.St != null && GameApi.St.mainMenuSaveData != null; }
         }
 
-        internal static readonly SettingDef[] All = Build();
+        private static SettingDef[] _all;
+
+        /// <summary>全部设置项。**懒构建**：只有真正打开设置页时才枚举分辨率等（否则会卡启动那一帧）。</summary>
+        internal static SettingDef[] All
+        {
+            get
+            {
+                if (_all == null) _all = Build();
+                return _all;
+            }
+        }
 
         // ---------------------------------------------------------------- 访问器
 

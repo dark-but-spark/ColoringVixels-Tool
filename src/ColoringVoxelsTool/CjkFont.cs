@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace ColoringVoxelsTool
@@ -32,19 +31,10 @@ namespace ColoringVoxelsTool
                 "Arial Unicode MS"
             };
 
-            HashSet<string> installed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            try
-            {
-                string[] names = Font.GetOSInstalledFontNames();
-                if (names != null)
-                    for (int i = 0; i < names.Length; i++) installed.Add(names[i]);
-            }
-            catch { /* 某些平台不支持枚举，忽略 */ }
-
+            // 直接按优先级尝试创建：避免 Font.GetOSInstalledFontNames() 枚举全部系统字体
+            // （很慢，首次调用常常正好卡在进游戏 / 界面绘制那一帧）。
             for (int i = 0; i < candidates.Length; i++)
             {
-                if (installed.Count > 0 && !installed.Contains(candidates[i])) continue;
-
                 Font f = Font.CreateDynamicFontFromOSFont(candidates[i], 24);
                 if (f != null)
                 {

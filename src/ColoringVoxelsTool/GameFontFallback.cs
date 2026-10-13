@@ -48,9 +48,13 @@ namespace ColoringVoxelsTool
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            // 新场景的 UI 换了，重新给几次扫描机会
-            _budget = ScansPerScene;
-            _next = 0f;
+            // 只有确认游戏在用 uGUI Text 时才逐场景复查；否则本作（TMP）扫够几次就停，
+            // 避免每次进出关卡都全场景 FindObjectsOfType 造成卡顿。
+            if (_usesText)
+            {
+                _budget = ScansPerScene;
+                _next = 0f;
+            }
         }
 
         private void Update()
