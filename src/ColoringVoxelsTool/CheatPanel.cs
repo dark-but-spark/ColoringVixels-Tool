@@ -1786,9 +1786,9 @@ namespace ColoringVoxelsTool
         {
             switch (preset)
             {
-                case 1: return "慢：28 格/秒 · 笔长 22 · 停笔 55%";
-                case 2: return "中：55 格/秒 · 笔长 30 · 停笔 38%（日常推荐）";
-                case 3: return "快：110 格/秒 · 笔长 45 · 停笔 18%（上限 220 格/秒）";
+                case 1: return "慢：19 格/秒 · 笔长 22 · 停笔 55%";
+                case 2: return "中：37 格/秒 · 笔长 30 · 停笔 38%（日常推荐）";
+                case 3: return "快：73 格/秒 · 笔长 45 · 停笔 18%（上限 220 格/秒）";
                 default: return "";
             }
         }

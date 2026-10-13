@@ -89,17 +89,17 @@ namespace ColoringVoxelsTool
             switch (preset)
             {
                 case 1: // 慢（更拟人，停顿多）
-                    SpeedCellsPerSecond = 28f;
+                    SpeedCellsPerSecond = 19f;
                     SpeedStrokeLength = 22;
                     SpeedPauseChance = 0.55f;
                     break;
                 case 2: // 中
-                    SpeedCellsPerSecond = 55f;
+                    SpeedCellsPerSecond = 37f;
                     SpeedStrokeLength = 30;
                     SpeedPauseChance = 0.38f;
                     break;
                 case 3: // 快
-                    SpeedCellsPerSecond = 110f;
+                    SpeedCellsPerSecond = 73f;
                     SpeedStrokeLength = 45;
                     SpeedPauseChance = 0.18f;
                     break;
