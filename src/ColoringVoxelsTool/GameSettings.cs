@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Text;
 using UnityEngine;
 
@@ -18,7 +17,7 @@ namespace ColoringVoxelsTool
     /// <summary>一条游戏设置项（3D 版）。</summary>
     internal sealed class SettingDef
     {
-        public string Field;          // 唯一键（对应 MainMenuSaveData 字段名）
+        public string Field;
         public string Label;
         public string Desc;
         public string Section;
@@ -34,11 +33,11 @@ namespace ColoringVoxelsTool
     }
 
     /// <summary>
-    /// 游戏自带设置的一份可编程镜像（3D 版）。
+    /// 游戏自带设置的完整镜像（3D 版）。
     ///
-    /// 游戏把这些设置存在 <see cref="MainMenuSaveData"/>（随存档存盘）里；这里把每一项收拢成
-    /// 「标题 + 读写委托 + 默认值」，供面板的「游戏预设」页与「推荐预设 / 恢复默认」统一调用。
-    /// 写值后统一 <c>SaveManager.SaveMainMenuData()</c> 落盘；带界面副作用的项额外触发对应刷新。
+    /// 设置分散在 <see cref="MainMenuSaveData"/>（随存档）与 <see cref="DisplaySettings"/>
+    /// （分辨率 / 垂直同步 / 帧率，存 PlayerPrefs）里；这里收拢成统一的「标题 + 读写委托」，
+    /// 供面板「游戏预设」页与「推荐预设 / 恢复默认」调用。
     /// </summary>
     internal static class GameSettings
     {
@@ -58,57 +57,168 @@ namespace ColoringVoxelsTool
 
         internal static readonly SettingDef[] All = Build();
 
+        // ---------------------------------------------------------------- 访问器
+
+        private static MainMenuSaveData MM { get { return GameApi.St != null ? GameApi.St.mainMenuSaveData : null; } }
+        private static DisplaySettings DS { get { return GameApi.St.DisplaySettingsNew; } }
+
+        private static void SaveDS(DisplaySettings d)
+        {
+            try { d.Save(); } catch (Exception) { }
+            try { GameApi.St.DisplaySettingsNew = d; } catch (Exception) { }
+        }
+
+        private static int MaxFps()
+        {
+            int max = 30;
+            try
+            {
+                max = Mathf.Max(max, Screen.currentResolution.refreshRate);
+                Resolution[] rs = Screen.resolutions;
+                for (int i = 0; i < rs.Length; i++) max = Mathf.Max(max, rs[i].refreshRate);
+            }
+            catch (Exception) { }
+            return max + 1;
+        }
+
+        private static string[] ResOptions()
+        {
+            var list = new List<string>();
+            try
+            {
+                Resolution[] rs = Screen.resolutions;
+                for (int i = 0; i < rs.Length; i++)
+                {
+                    string t = rs[i].width + "x" + rs[i].height;
+                    if (!list.Contains(t)) list.Add(t);
+                }
+            }
+            catch (Exception) { }
+            if (list.Count == 0) list.Add("当前");
+            return list.ToArray();
+        }
+
+        private static int ResIndex()
+        {
+            DisplaySettings d = DS;
+            Resolution[] rs = Screen.resolutions;
+            int idx = 0, n = 0;
+            var seen = new HashSet<string>();
+            for (int i = 0; i < rs.Length; i++)
+            {
+                string t = rs[i].width + "x" + rs[i].height;
+                if (!seen.Add(t)) continue;
+                if (rs[i].width == d.resWidth && rs[i].height == d.resHeight) { idx = n; break; }
+                n++;
+            }
+            return idx;
+        }
+
+        // ---------------------------------------------------------------- 表
+
         private static SettingDef[] Build()
         {
             var list = new List<SettingDef>();
+            var fsNames = Enum.GetNames(typeof(FullScreenMode));
+            var tlNames = Enum.GetNames(typeof(SettingsTimelapse));
+            var statNames = Enum.GetNames(typeof(SettingsLevelItemStat));
+            var smallNames = Enum.GetNames(typeof(SettingsLevelSmall));
+            string[] resOpts = ResOptions();
+            int maxFps = MaxFps();
 
             // ---------------- 界面与无障碍 ----------------
+            list.Add(Toggle("vSync", "垂直同步", "开启后帧率跟随显示器刷新率", SecAccessibility,
+                () => DS.vSync == 1, v => { DisplaySettings d = DS; d.vSync = v ? 1 : 0; SaveDS(d); }, false));
+            list.Add(Slider("targetFrameRate", "帧率上限", "未开垂直同步时的目标帧率", SecAccessibility,
+                24f, maxFps, false, () => { DisplaySettings d = DS; return d.unlimitedFrameRate ? maxFps : d.targetFrameRate; },
+                v => { DisplaySettings d = DS; d.targetFrameRate = (int)v; d.unlimitedFrameRate = false; SaveDS(d); }, maxFps));
+            list.Add(Slider("fullScreenMode", "屏幕模式", "全屏 / 无边框 / 窗口", SecAccessibility,
+                0f, fsNames.Length - 1, true, () => (int)DS.fullScreenMode,
+                v => { DisplaySettings d = DS; d.fullScreenMode = (FullScreenMode)Mathf.Clamp((int)v, 0, fsNames.Length - 1); SaveDS(d); }, 1f,
+                fsNames));
+            list.Add(Slider("resolution", "分辨率", "窗口分辨率", SecAccessibility,
+                0f, resOpts.Length - 1, true, () => ResIndex(),
+                v => {
+                    int i = Mathf.Clamp((int)v, 0, resOpts.Length - 1);
+                    string t = resOpts[i];
+                    int x = t.IndexOf('x');
+                    if (x > 0)
+                    {
+                        int w, h;
+                        if (int.TryParse(t.Substring(0, x), out w) && int.TryParse(t.Substring(x + 1), out h))
+                        {
+                            DisplaySettings d = DS; d.resWidth = w; d.resHeight = h; SaveDS(d);
+                        }
+                    }
+                }, 0f, resOpts));
+            list.Add(Slider("bloom", "泛光", "画面泛光强度", SecAccessibility,
+                0f, 4f, false, () => MM.bloom, v => { MM.bloom = v; RefreshVolume(); }, 0f));
             list.Add(Toggle("darkMode", "暗色模式", "深色底，夜里更省眼", SecAccessibility,
-                m => m.darkMode, (m, v) => m.darkMode = v, false, RefreshMaterials));
-            list.Add(Toggle("showTimer", "显示计时器", "关卡里显示本图用时", SecAccessibility,
-                m => m.showTimer, (m, v) => m.showTimer = v, false));
-            list.Add(Toggle("showCompletion", "显示完成度", "关卡里显示完成百分比", SecAccessibility,
-                m => m.showCompletion, (m, v) => m.showCompletion = v, false));
+                () => MM.darkMode, v => { MM.darkMode = v; RefreshMaterials(); }, false));
 
             // ---------------- 主菜单 ----------------
             list.Add(Toggle("hideLevelNames", "隐藏关卡名", "未完成的关卡名显示为 ???", SecMainMenu,
-                m => m.hideLevelNames, (m, v) => m.hideLevelNames = v, false, RefreshLevelItems));
+                () => MM.hideLevelNames, v => { MM.hideLevelNames = v; RefreshLevelItems(); }, false));
             list.Add(Toggle("legacyBookSelect", "旧版选书", "用旧式书籍选择界面", SecMainMenu,
-                m => m.legacyBookSelect, (m, v) => m.legacyBookSelect = v, false, RefreshWorldSelect));
+                () => MM.legacyBookSelect, v => { MM.legacyBookSelect = v; RefreshWorldSelect(); }, false));
             list.Add(Toggle("mainMenuBox", "主菜单盒子", "主菜单显示装饰盒子", SecMainMenu,
-                m => !m.mainMenuBox, (m, v) => m.mainMenuBox = !v, true));
+                () => !MM.mainMenuBox, v => { MM.mainMenuBox = !v; }, true));
+            list.Add(Slider("mainMenuScroll", "主菜单滚动速度", "主菜单滚动手感", SecMainMenu,
+                0f, 4f, false, () => MM.mainMenuScroll, v => MM.mainMenuScroll = v, 0f));
+            list.Add(Slider("hideCompletedWorlds", "隐藏已完成世界", "完成度达到多少后隐藏该世界", SecMainMenu,
+                0f, 4f, true, () => MM.hideCompletedWorlds, v => { MM.hideCompletedWorlds = (int)v; RefreshWorldSelect(); }, 0f));
+            list.Add(Slider("levelItemCompleteStat", "关卡完成信息", "已完成关卡的补充信息", SecMainMenu,
+                0f, statNames.Length - 1, true, () => MM.levelItemCompleteStat, v => { MM.levelItemCompleteStat = (int)v; RefreshLevelItems(); }, 0f, statNames));
+            list.Add(Slider("levelItemLeft", "关卡页左栏", "关卡条目左侧显示的信息", SecMainMenu,
+                0f, smallNames.Length - 1, true, () => MM.levelItemLeft - 1, v => { MM.levelItemLeft = (int)v + 1; RefreshLevelItems(); }, 1f, smallNames));
+            list.Add(Slider("levelItemRight", "关卡页右栏", "关卡条目右侧显示的信息", SecMainMenu,
+                0f, smallNames.Length - 1, true, () => MM.levelItemRight - 1, v => { MM.levelItemRight = (int)v + 1; RefreshLevelItems(); }, 2f, smallNames));
 
             // ---------------- 游戏内 ----------------
+            list.Add(Toggle("showTimer", "显示计时器", "关卡里显示本图用时", SecInGame,
+                () => MM.showTimer, v => MM.showTimer = v, false));
+            list.Add(Toggle("showCompletion", "显示完成度", "关卡里显示完成百分比", SecInGame,
+                () => MM.showCompletion, v => MM.showCompletion = v, false));
+            list.Add(Toggle("toggleClick", "点击切换涂色", "点一下切换按住 / 松开，不用一直压着鼠标", SecInGame,
+                () => MM.toggleClick, v => MM.toggleClick = v, false));
             list.Add(Toggle("gridDisabled", "显示网格", "地面显示格子网格", SecInGame,
-                m => !m.gridDisabled, (m, v) => m.gridDisabled = !v, true));
+                () => !MM.gridDisabled, v => MM.gridDisabled = !v, true));
             list.Add(Toggle("gridFollow", "网格跟随视角", "网格随相机高度移动", SecInGame,
-                m => m.gridFollow, (m, v) => m.gridFollow = v, false));
+                () => MM.gridFollow, v => MM.gridFollow = v, false));
             list.Add(Toggle("removeCompletedLayers", "完成后移除层", "涂满的层自动隐藏", SecInGame,
-                m => m.removeCompletedLayers, (m, v) => m.removeCompletedLayers = v, false));
+                () => MM.removeCompletedLayers, v => MM.removeCompletedLayers = v, false));
             list.Add(Toggle("disableVoxelNewAnim", "新方块动画", "新涂方块出现时的缩放动画", SecInGame,
-                m => !m.disableVoxelNewAnim, (m, v) => m.disableVoxelNewAnim = !v, true));
+                () => !MM.disableVoxelNewAnim, v => MM.disableVoxelNewAnim = !v, true));
             list.Add(Toggle("disableVoxelHoverAnim", "悬停动画", "鼠标悬停方块的放大反馈", SecInGame,
-                m => !m.disableVoxelHoverAnim, (m, v) => m.disableVoxelHoverAnim = !v, true));
+                () => !MM.disableVoxelHoverAnim, v => MM.disableVoxelHoverAnim = !v, true));
             list.Add(Toggle("disableVoxelCompletedAnim", "完成动画", "涂对时方块的完成动画", SecInGame,
-                m => !m.disableVoxelCompletedAnim, (m, v) => m.disableVoxelCompletedAnim = !v, true));
+                () => !MM.disableVoxelCompletedAnim, v => MM.disableVoxelCompletedAnim = !v, true));
             list.Add(Toggle("toggleClickWhenCompleteColour", "涂完自动跳色", "一种颜色涂完自动切到下一种", SecInGame,
-                m => !m.toggleClickWhenCompleteColour, (m, v) => m.toggleClickWhenCompleteColour = !v, true));
+                () => !MM.toggleClickWhenCompleteColour, v => MM.toggleClickWhenCompleteColour = !v, true));
             list.Add(Toggle("colorPaletteToLayer", "调色板按层", "调色板只显示当前层的颜色", SecInGame,
-                m => !m.colorPaletteToLayer, (m, v) => m.colorPaletteToLayer = !v, true));
+                () => !MM.colorPaletteToLayer, v => MM.colorPaletteToLayer = !v, true));
             list.Add(Toggle("hideCompletedColours", "隐藏已完成颜色", "把涂完的颜色从调色板移除", SecInGame,
-                m => !m.hideCompletedColours, (m, v) => m.hideCompletedColours = !v, true));
+                () => !MM.hideCompletedColours, v => MM.hideCompletedColours = !v, true));
             list.Add(Toggle("colorLock", "颜色锁定", "涂错后按目标色显示", SecInGame,
-                m => !m.colorLock, (m, v) => m.colorLock = !v, true));
+                () => !MM.colorLock, v => MM.colorLock = !v, true));
             list.Add(Toggle("hideNonEssentialVoxels", "隐藏非必要体素", "跳过装饰性小体素", SecInGame,
-                m => m.hideNonEssentialVoxels, (m, v) => m.hideNonEssentialVoxels = v, false));
+                () => MM.hideNonEssentialVoxels, v => MM.hideNonEssentialVoxels = v, false));
             list.Add(Toggle("seasonalEventsDisabled", "季节特效", "显示节日 / 活动特效", SecInGame,
-                m => !m.seasonalEventsDisabled, (m, v) => m.seasonalEventsDisabled = !v, true, RefreshSeasonal));
+                () => !MM.seasonalEventsDisabled, v => { MM.seasonalEventsDisabled = !v; RefreshSeasonal(); }, true));
+            list.Add(Slider("timelapseTime", "延时动画速度", "关卡回放动画的时长", SecInGame,
+                0f, 20f, false, () => MM.timelapseTime, v => MM.timelapseTime = v, 0f));
+            list.Add(Slider("timelapseMode", "延时动画模式", "何时播放关卡回放", SecInGame,
+                0f, tlNames.Length - 1, true, () => MM.timelapseMode, v => MM.timelapseMode = (int)v, 0f, tlNames));
+            list.Add(Slider("keyboardSpeed", "键盘视角速度", "键盘移动视角的速度", SecInGame,
+                0f, 4f, false, () => MM.keyboardSpeed, v => MM.keyboardSpeed = v, 0f));
+            list.Add(Slider("mouseSpeed", "鼠标视角速度", "鼠标拖动旋转视角的速度", SecInGame,
+                0f, 4f, false, () => MM.mouseSpeed, v => MM.mouseSpeed = v, 0f));
 
             // ---------------- 音乐 ----------------
-            list.Add(Slider("musicVolume", "音乐音量", "背景音乐音量", SecMusic, 0f, 1f, false,
-                m => m.musicVolume, (m, v) => m.musicVolume = v, 0.7f, RefreshMusic));
-            list.Add(Slider("sfxVolume", "音效音量", "按钮 / 涂色音效音量", SecMusic, 0f, 1f, false,
-                m => m.sfxVolume, (m, v) => m.sfxVolume = v, 0.7f, RefreshMusic));
+            list.Add(Slider("musicVolume", "音乐音量", "背景音乐音量", SecMusic,
+                0f, 1f, false, () => MM.musicVolume, v => { MM.musicVolume = v; RefreshMusic(); }, 0.7f));
+            list.Add(Slider("sfxVolume", "音效音量", "按钮 / 涂色音效音量", SecMusic,
+                0f, 1f, false, () => MM.sfxVolume, v => { MM.sfxVolume = v; RefreshMusic(); }, 0.7f));
 
             return list.ToArray();
         }
@@ -251,6 +361,7 @@ namespace ColoringVoxelsTool
         private static void RefreshLevelItems() { try { WorldVisualiser.Inst?.RefreshLevelItems(); } catch (Exception) { } }
         private static void RefreshWorldSelect() { try { WorldSelectPopulator.Inst?.InitialiseButtons(); } catch (Exception) { } }
         private static void RefreshMusic() { try { MusicManager.Inst.UpdateVolume(); } catch (Exception) { } }
+        private static void RefreshVolume() { try { GlobalVolumeManager.Inst.RefreshValues(); } catch (Exception) { } }
         private static void RefreshSeasonal()
         {
             try { EventManager.Inst.FindCurrentEvent(); EventManager.Inst.RefreshAllGraphics(); }
@@ -260,32 +371,29 @@ namespace ColoringVoxelsTool
         // ---------------------------------------------------------------- 构造
 
         private static SettingDef Toggle(string field, string label, string desc, string section,
-            Func<MainMenuSaveData, bool> get, Action<MainMenuSaveData, bool> set, bool def, Action onChanged = null)
+            Func<bool> get, Action<bool> set, bool def, Action onChanged = null)
         {
-            Getters[field] = () => get(GameApi.St.mainMenuSaveData);
+            Getters[field] = () => get();
             Setters[field] = v =>
             {
-                set(GameApi.St.mainMenuSaveData, Convert.ToBoolean(v, CultureInfo.InvariantCulture));
+                set(Convert.ToBoolean(v, CultureInfo.InvariantCulture));
                 if (onChanged != null) onChanged();
             };
             return new SettingDef { Field = field, Label = label, Desc = desc, Section = section, Kind = SettingKind.Toggle, Default = def };
         }
 
         private static SettingDef Slider(string field, string label, string desc, string section,
-            float min, float max, bool integer, Func<MainMenuSaveData, float> get, Action<MainMenuSaveData, float> set,
-            float def, Action onChanged = null)
+            float min, float max, bool integer, Func<float> get, Action<float> set, float def,
+            string[] options = null, float displayScale = 1f)
         {
-            Getters[field] = () => get(GameApi.St.mainMenuSaveData);
-            Setters[field] = v =>
-            {
-                set(GameApi.St.mainMenuSaveData, Convert.ToSingle(v, CultureInfo.InvariantCulture));
-                if (onChanged != null) onChanged();
-            };
+            Getters[field] = () => get();
+            Setters[field] = v => set(Convert.ToSingle(v, CultureInfo.InvariantCulture));
             return new SettingDef
             {
                 Field = field, Label = label, Desc = desc, Section = section,
                 Kind = integer ? SettingKind.IntSlider : SettingKind.FloatSlider,
-                Min = (int)min, Max = (int)max, MinF = min, MaxF = max, Default = def
+                Min = (int)min, Max = (int)max, MinF = min, MaxF = max,
+                Options = options, DisplayScale = displayScale, Default = integer ? (object)(int)def : (object)def
             };
         }
     }
