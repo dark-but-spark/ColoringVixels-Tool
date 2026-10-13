@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using UnityEngine;
 
 namespace ColoringVoxelsTool.Assist
 {
@@ -232,7 +233,12 @@ namespace ColoringVoxelsTool.Assist
             Message = null;
             S.Clamp();
 
-            if (!Region.HasRegion)
+            var b = GameApi.B;
+            bool is3d = GameApi.InLevel(b);
+
+            // 3D：区域即当前层，由 BuildPath3D 自动生成，不需要预先框选；
+            // 2D：需要先有框选区域。
+            if (!is3d && !Region.HasRegion)
             {
                 LastError = "还没有框选区域（F7 拖拽框选）";
                 State = AssistState.Idle;
@@ -241,7 +247,9 @@ namespace ColoringVoxelsTool.Assist
 
             if (!BuildPath())
             {
-                LastError = "区域太小或没有可扫描的行，请重新框选";
+                LastError = is3d
+                    ? "读不到当前层或相机，请进入关卡并让画布可见"
+                    : "区域太小或没有可扫描的行，请重新框选";
                 State = AssistState.Idle;
                 return;
             }
@@ -300,6 +308,9 @@ namespace ColoringVoxelsTool.Assist
 
         private bool BuildPath()
         {
+            var b = GameApi.B;
+            if (GameApi.InLevel(b)) return BuildPath3D(b);
+
             _px.Clear();
             _py.Clear();
             _row.Clear();
@@ -354,6 +365,81 @@ namespace ColoringVoxelsTool.Assist
 
             TotalRows = S.Rows;
             return _px.Count > 1;
+        }
+
+        /// <summary>
+        /// 3D 版路径：当前层的世界坐标逐行 → 投影到屏幕。
+        /// 按世界坐标生成，透视/旋转都精确贴合；每行的采样点按「采样步长」以**体素**为单位取值，
+        /// 但参数面板里的「采样步长」量纲是像素，这里就近折算成体素步（最小 1）。
+        /// 只扫当前选中颜色所在的层；不自动换色 / 换层。
+        /// </summary>
+        private bool BuildPath3D(Builder b)
+        {
+            _px.Clear();
+            _py.Clear();
+            _row.Clear();
+
+            if (!GameApi.Size(b, out int cols, out int layers, out int rows)) return false;
+            int layer = b.selectedLayer;
+            if (layer < 0 || layer >= layers) return false;
+
+            Camera cam = Camera.main;
+            if (cam == null) return false;
+
+            int ox = 0, oy = 0;
+            AssistWin32.TryGetClientOrigin(Screen.width, Screen.height, out ox, out oy);
+
+            int vstep = Math.Max(1, (int)Math.Round(S.Step));
+
+            for (int r = 0; r < rows; r++)
+            {
+                bool reverse = S.Snake && (r % 2 == 1);
+
+                var xs = new List<int>();
+                for (int x = 0; x < cols; x += vstep) xs.Add(x);
+                if (xs.Count == 0 || xs[xs.Count - 1] != cols - 1) xs.Add(cols - 1);
+                if (reverse) xs.Reverse();
+
+                for (int k = 0; k < xs.Count; k++)
+                {
+                    int x = xs[k];
+                    Vector3 sp = cam.WorldToScreenPoint(new Vector3(x + 0.5f, layer + 0.5f, r + 0.5f));
+                    if (sp.z <= 0f) continue;
+
+                    _px.Add(sp.x + ox);
+                    _py.Add((Screen.height - sp.y) + oy);
+                    _row.Add(r);
+                }
+            }
+
+            // 单格屏幕尺寸（信息牌显示用）
+            try
+            {
+                Vector3 a = cam.WorldToScreenPoint(new Vector3(0.5f, layer + 0.5f, 0.5f));
+                Vector3 c = cam.WorldToScreenPoint(new Vector3(1.5f, layer + 0.5f, 0.5f));
+                Vector3 d = cam.WorldToScreenPoint(new Vector3(0.5f, layer + 0.5f, 1.5f));
+                if (a.z > 0f && c.z > 0f) S.CellWidth = Vector2.Distance(a, c);
+                if (a.z > 0f && d.z > 0f) S.CellHeight = Vector2.Distance(a, d);
+            }
+            catch (Exception) { }
+
+            UpdateRegion3D(cam, layer, cols, rows, ox, oy);
+            TotalRows = rows;
+            return _px.Count > 1;
+        }
+
+        /// <summary>把 Region 设成当前层投影到屏幕的四边形（供覆盖层绘制与面板显示宽高）。</summary>
+        private void UpdateRegion3D(Camera cam, int layer, int cols, int rows, int ox, int oy)
+        {
+            int[] cx = { 0, cols, cols, 0 };
+            int[] cz = { 0, 0, rows, rows };
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 sp = cam.WorldToScreenPoint(new Vector3(cx[i], layer + 0.5f, cz[i]));
+                Region.X[i] = sp.x + ox;
+                Region.Y[i] = (Screen.height - sp.y) + oy;
+            }
+            Region.HasRegion = true;
         }
 
         private void PressButton()
