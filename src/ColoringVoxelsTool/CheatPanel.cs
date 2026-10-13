@@ -2523,24 +2523,39 @@ namespace ColoringVoxelsTool
 
         // ============================================================ HUD
 
+        // HUD 10Hz sampling cache (values sampled every 0.1s; still drawn every frame).
+        private float _hudNextSample;
+        private int _hudTotal, _hudDone, _hudRemain;
+        private float _hudProgress;
+        private readonly List<KeyValuePair<Color, int>> _hudColours = new List<KeyValuePair<Color, int>>();
+
         private void DrawHud()
         {
             var ct = GameApi.Ct;
             if (!GameApi.InLevel(ct)) return;
 
-            var st = GameApi.St;
-            int total = GameApi.TotalPixels(ct);
-            int done = GameApi.PaintedPixels(ct);
-            int remain = Mathf.Max(0, total - done);
-            float progress = GameApi.Progress(ct);
-
-            var list = new List<KeyValuePair<Color, int>>();
-            if (Plugin.HudDetail.Value && GameApi.Colours != null && ct.colourCounts != null)
+            if (Time.unscaledTime >= _hudNextSample)
             {
-                for (int i = 0; i < GameApi.Colours.Count && i < ct.colourCounts.Length; i++)
-                    if (ct.colourCounts[i] > 0)
-                        list.Add(new KeyValuePair<Color, int>(GameApi.Colours[i], ct.colourCounts[i]));
+                _hudNextSample = Time.unscaledTime + 0.1f;
+                _hudTotal = GameApi.TotalPixels(ct);
+                _hudDone = GameApi.PaintedPixels(ct);
+                _hudRemain = Mathf.Max(0, _hudTotal - _hudDone);
+                _hudProgress = GameApi.Progress(ct);
+
+                _hudColours.Clear();
+                if (Plugin.HudDetail.Value && GameApi.Colours != null && ct.colourCounts != null)
+                {
+                    for (int i = 0; i < GameApi.Colours.Count && i < ct.colourCounts.Length; i++)
+                        if (ct.colourCounts[i] > 0)
+                            _hudColours.Add(new KeyValuePair<Color, int>(GameApi.Colours[i], ct.colourCounts[i]));
+                }
             }
+
+            int total = _hudTotal;
+            int done = _hudDone;
+            int remain = _hudRemain;
+            float progress = _hudProgress;
+            var list = _hudColours;
 
             float w = Plugin.HudDetail.Value ? 216f : 214f;
             float h = 96f + list.Count * 22f;

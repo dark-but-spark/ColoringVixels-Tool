@@ -24,7 +24,7 @@ namespace ColoringVoxelsTool
         /// <summary>未涂的格子是否显示暗色底稿。</summary>
         public bool ShowGhost { get; set; } = true;
 
-        private const float RebuildInterval = 0.25f;
+        private const float RebuildInterval = 0.1f;
         private const float HeartbeatInterval = 1.5f;
 
         private float _cooldown;
