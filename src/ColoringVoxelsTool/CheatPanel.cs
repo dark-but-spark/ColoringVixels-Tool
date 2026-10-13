@@ -238,6 +238,9 @@ namespace ColoringVoxelsTool
             // 主题 / 动效开关：配置里改了就即时生效（和前一次的值比对，避免每帧重算）
             ApplyAppearance();
 
+            // 「一键涂完本关」的逐层推进
+            TickInstantFill();
+
             // 提醒中心（倒计时播报 / 每小时趣味横幅）与使用统计
             Reminder.Tick(Time.unscaledDeltaTime);
             Stats.Tick(Time.unscaledDeltaTime);
@@ -326,24 +329,43 @@ namespace ColoringVoxelsTool
 
         // ============================================================ 操作
 
+        private bool _fillAll;
+
         private void DoInstantFill()
         {
             if (!RequireAutoUnlocked("一键涂完")) return;
 
-            int n = GameApi.InstantFill();
-            if (n > 0)
+            var b = GameApi.B;
+            if (!GameApi.InLevel(b)) { Toast("还没进关卡"); return; }
+            if (GameApi.RemainingVoxels(b) <= 0) { Toast("已经没有需要涂的格子了"); return; }
+
+            _fillAll = true;
+            Toast("一键涂完本关：逐层填涂中…");
+        }
+
+        /// <summary>
+        /// 「一键涂完本关」的逐层驱动：每帧涂满当前层，游戏自动翻页后继续，直到整关完成。
+        /// 因为游戏一次只让涂一层、且换层时有动画，无法在一次调用里涂完，只能跨帧推进。
+        /// </summary>
+        private void TickInstantFill()
+        {
+            if (!_fillAll) return;
+
+            var b = GameApi.B;
+            if (!GameApi.InLevel(b)) { _fillAll = false; return; }
+
+            if (GameApi.RemainingVoxels(b) <= 0)
             {
-                UserProfile.RecordPixels(n);
+                _fillAll = false;
                 if (Plugin.AutoSaveAfterRun.Value) GameApi.SaveNow();
-                var ct = GameApi.Ct;
-                if (GameApi.InLevel(ct) && GameApi.RemainingPixels(ct) <= 0)
-                    UserProfile.RecordImageCompleted(GameApi.TotalPixels(ct), XpTrack.Auto);
-                Toast($"一键涂完：填涂 {n} 格");
+                UserProfile.RecordImageCompleted(GameApi.TotalVoxels(b), XpTrack.Auto);
+                Toast("整关涂完");
+                return;
             }
-            else
-            {
-                Toast("已经没有需要涂的格子了");
-            }
+
+            if (b.animatingLayerAppearence) return;   // 等这一层动画播完再继续
+            int n = GameApi.FillLayer(b);
+            if (n > 0) UserProfile.RecordPixels(n);
         }
 
         private void DoErase()

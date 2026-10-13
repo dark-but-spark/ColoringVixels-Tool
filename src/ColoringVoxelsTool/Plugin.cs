@@ -185,55 +185,6 @@ namespace ColoringVoxelsTool
             Log.Info(PluginName + " v" + Version + " 已加载 —— 按 " + KeyToggle.Value + " 打开面板");
         }
 
-        private void Update()
-        {
-            float dt = UnityEngine.Time.unscaledDeltaTime;
-            UserProfile.Tick(dt);
-            UserProfile.TickSave(dt);
-            PaintTimer.Tick(dt);
-            Stats.Tick(dt);
-            Reminder.Tick(dt);
-
-            HandleHotkeys();
-        }
-
-        private void HandleHotkeys()
-        {
-            // 面板尚未迁移，F1 暂不处理。
-            if (Input.GetKeyDown(KeyFill.Value))
-            {
-                var b = GameApi.B;
-                if (GameApi.InLevel(b)) GameApi.FillLayer(b);
-            }
-
-            if (Input.GetKeyDown(KeyAuto.Value))
-            {
-                var painter = AutoPainter.Instance;
-                if (painter != null)
-                {
-                    if (!painter.Running && AutoRestrict.Value)
-                    {
-                        var b = GameApi.B;
-                        painter.RestrictToColour = GameApi.InLevel(b) ? b.selectedCol : 0;
-                    }
-                    painter.Toggle();
-                }
-            }
-
-            if (Input.GetKeyDown(KeySave.Value))
-            {
-                var b = GameApi.B;
-                if (GameApi.InLevel(b)) GameApi.SaveNow(b);
-            }
-
-            if (Input.GetKeyDown(KeyHighlight.Value))
-            {
-                // 关闭 → 闪烁 → 持续 → 关闭
-                int m = HighlightMode.Value;
-                HighlightMode.Value = m == 0 ? 2 : (m == 2 ? 1 : 0);
-            }
-        }
-
         private void OnDestroy()
         {
             Log.Info("插件正在退出，补写落盘数据……");

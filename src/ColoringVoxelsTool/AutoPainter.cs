@@ -149,6 +149,14 @@ namespace ColoringVoxelsTool
                 _cursorX = _cursorY = -1;
             }
 
+            // 换层时有生成 / 出场动画，期间游戏不接受涂色；等它播完再继续，
+            // 否则这一层会被误判成「涂完」而跳层或直接收工。
+            if (b.animatingLayerAppearence)
+            {
+                Status = "等待下一层…";
+                return;
+            }
+
             if (Time.unscaledTime < _pauseUntil) return;
 
             _timer += Time.unscaledDeltaTime;
@@ -235,6 +243,14 @@ namespace ColoringVoxelsTool
                 {
                     // 只涂当前颜色：涂完这种颜色就收工，不升层
                     if (RestrictToColour > 0) return false;
+
+                    // 当前层其实还没涂完（例如刚换层、格子还没就绪）：重新规划，别急着升层
+                    if (GameApi.LayerRemaining(b, _layer) > 0)
+                    {
+                        _colours = null;
+                        _colourIndex = 0;
+                        return true;
+                    }
 
                     int before = b.selectedLayer;
                     GameApi.NextLayer(b, true);
