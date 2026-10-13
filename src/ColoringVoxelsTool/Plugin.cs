@@ -183,6 +183,8 @@ namespace ColoringVoxelsTool
             try { AssistOverlay.Init(Config); }
             catch (System.Exception e) { Log.Warn("初始化人工辅助失败：" + e.Message); }
 
+            gameObject.AddComponent<PresetButtonInjector>();
+
             GamePreset.Reload();
 
             Log.Info(PluginName + " v" + Version + " 已加载 —— 按 " + KeyToggle.Value + " 打开面板");

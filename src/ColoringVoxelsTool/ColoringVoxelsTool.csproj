@@ -20,11 +20,6 @@
     <CoreDir>$(MSBuildThisFileDirectory)..\..\vendor\bepinex-x64\BepInEx\core\</CoreDir>
   </PropertyGroup>
 
-  <!-- 设置界面「推荐预设」按钮注入：依赖 2D 界面对象名，暂不参与编译。 -->
-  <ItemGroup>
-    <Compile Remove="PresetButtonInjector.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <Reference Include="BepInEx">
       <HintPath>$(CoreDir)BepInEx.dll</HintPath>
