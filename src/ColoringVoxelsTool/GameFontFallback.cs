@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace ColoringVoxelsTool
@@ -7,18 +8,19 @@ namespace ColoringVoxelsTool
     /// <summary>
     /// 中文字形兜底补丁（不做任何文案翻译）。
     ///
-    /// 游戏界面里偶尔会出现中文（游戏自带的中文本地化、隐藏关卡名等），而游戏自带的
-    /// 像素字体（Silkscreen / Tahoma / OpenDyslexic）都没有中文字形，于是每个字都会
-    /// 渲染成「?」。这里周期性地扫描界面上的 UnityEngine.UI.Text，只对「文本里含中日韩
-    /// 字符」的那些临时换成系统中文字体；一旦文本变回不含中文，就立刻恢复游戏原本的
-    /// 字体与材质。
+    /// 只对界面上「含中日韩字符」的 uGUI <see cref="Text"/> 临时换成系统中文字体；
+    /// 一旦文本变回不含中文就恢复游戏原字体。游戏原本的字体、英文/数字显示一律不动。
     ///
-    /// 关键：只动「含中文的那些 Text」，游戏原本的字体、以及英文/数字显示全部保持原样，
-    /// 绝不整体替换游戏字体。
+    /// 性能：<c>FindObjectsOfType&lt;Text&gt;</c> 会遍历场景全部 GameObject，在体素关卡里
+    /// （每格一个方块）非常贵。所以这里改为**随场景加载的有界扫描**：
+    ///   · 每次切场景后只扫有限几次；
+    ///   · 若从没发现过 uGUI Text（本作主要用 TMP），扫完预算就彻底停下，不再周期扫描；
+    ///   · 一旦发现过 Text（说明游戏确实用 uGUI Text），才恢复 0.5s 周期扫描。
     /// </summary>
     internal class GameFontFallback : MonoBehaviour
     {
         private const float ScanInterval = 0.5f;
+        private const int ScansPerScene = 6;
 
         private sealed class Saved
         {
@@ -29,17 +31,43 @@ namespace ColoringVoxelsTool
 
         private readonly List<Saved> _patched = new List<Saved>();
         private readonly HashSet<int> _seen = new HashSet<int>();
+
         private float _next;
+        private int _budget = ScansPerScene;
+        private bool _usesText;   // 曾经扫到过 uGUI Text
+
+        private void OnEnable()
+        {
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private void OnDisable()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            // 新场景的 UI 换了，重新给几次扫描机会
+            _budget = ScansPerScene;
+            _next = 0f;
+        }
 
         private void Update()
         {
+            // 没用到 uGUI Text 且预算用完后：彻底不扫，避免在体素关卡里每 0.5s 全场景遍历
+            if (!_usesText && _budget <= 0) return;
+
             if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + ScanInterval;
+            if (_budget > 0) _budget--;
 
             Font f = CjkFont.Get();
             if (f == null) return;
 
             Text[] texts = FindObjectsOfType<Text>();
+            if (texts.Length > 0) _usesText = true;
+
             for (int i = 0; i < texts.Length; i++)
             {
                 Text t = texts[i];
@@ -47,12 +75,10 @@ namespace ColoringVoxelsTool
                 if (t.hideFlags != HideFlags.None) continue;
                 if (!CjkFont.HasCjk(t.text)) continue;
 
-                // 兜底：游戏切换字体 / 我们上一轮被改回去时，这里再纠正一次。
                 if (t.font != f)
                 {
                     Remember(t);
                     t.font = f;
-                    // 让 Text 用动态字体自己的材质，否则旧的位图字体材质会让中文不显示。
                     t.material = null;
                     t.SetAllDirty();
                 }
@@ -85,6 +111,9 @@ namespace ColoringVoxelsTool
                 _seen.Remove(s.Target.GetInstanceID());
                 _patched.RemoveAt(i);
             }
+
+            // 还在管着一些 Text：说明游戏确实用 uGUI Text，继续周期检查
+            if (_patched.Count > 0) _usesText = true;
         }
 
         private void Remember(Text t)
