@@ -32,7 +32,8 @@ namespace ColoringVoxelsTool
 
         // ---------------------------------------------------------------- 单例
 
-        public static Builder B => UnityEngine.Object.FindFirstObjectByType<Builder>();
+        // 用游戏自己缓存的单例，避免面板每帧多次调用时反复做全场景查找（FindObjectOfType 很贵）。
+        public static Builder B => Builder.Inst;
         public static CrossLevelStorage St => CrossLevelStorage.Inst;
 
         // ---------------------------------------------------------------- 关卡状态
