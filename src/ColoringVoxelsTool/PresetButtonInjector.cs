@@ -38,6 +38,11 @@ namespace ColoringVoxelsTool
             _cleanupDone = false;
 
             if (Time.unscaledTime < _next) return;
+
+            // 只在游戏设置面板打开时才去查找。否则每 0.75s 一次全场景 FindObjectsOfType
+            // 在体素关卡里（每格一个方块）非常贵，会造成进出关卡卡顿。
+            if (!SettingsPanelOpen()) return;
+
             _next = Time.unscaledTime + Interval;
 
             try
@@ -47,6 +52,19 @@ namespace ColoringVoxelsTool
             catch (Exception e)
             {
                 Log.Warn("注入推荐预设按钮失败：" + e.Message);
+            }
+        }
+
+        private static bool SettingsPanelOpen()
+        {
+            try
+            {
+                UIPanelManager m = UIPanelManager.Inst;
+                return m != null && m.currentPanel == PanelName.Settings;
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 
